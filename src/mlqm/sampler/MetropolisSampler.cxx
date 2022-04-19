@@ -19,56 +19,88 @@ MetropolisSampler::MetropolisSampler(SamplerConfig _cfg)
 
 }
 
-float MetropolisSampler::kick(int n_kicks, DeepSetsCorrelator wavefunction){
+torch::Tensor MetropolisSampler::kick(int n_kicks, DeepSetsCorrelator wavefunction){
 
 
         // We need to compute the wave function twice:
         // Once for the original coordiate, and again for the kicked coordinates
-        float acceptance(0.0);
+        torch::Tensor acceptance = torch::zeros({1});
         // Calculate the current wavefunction value:
-        auto current_wavefunction = wavefunction->forward(x);
+        torch::Tensor current_wavefunction = wavefunction(x);
 
         // Generate a long set of random number from which we will pull:
-        // random_numbers = torch::rand::uniform(shape = [nkicks,shape[0],1], dtype=dtype)
+        torch::Tensor random_numbers = torch::rand({n_kicks, cfg.n_walkers,1});
 
         // Generate a long list of kicks:
-        // kicks = kicker(shape=[nkicks, *shape], **kicker_params, dtype=dtype)
+        torch::Tensor kicks = torch::randn({n_kicks, cfg.n_walkers,cfg.n_particles,cfg.n_dim});
 
-        /*
-        # Adding spin:
-        #  A meaningful metropolis move is to pick a pair and exchange the spin
-        #  ONly one pair gets swapped at a time
-        #  Change the isospin of a pair as well.
-        #  The spin coordinate is 2 dimensions per particle: spin and isospin (each up/down)
-        #
+        // Adding spin:
+        //  A meaningful metropolis move is to pick a pair and exchange the spin
+        //  ONly one pair gets swapped at a time
+        //  Change the isospin of a pair as well.
+        //  The spin coordinate is 2 dimensions per particle: spin and isospin (each up/down)
+        //
 
-        # Computing modulus squa f wavefunction in new vs old coordinates
-        #  - this kicks randomly with a guassian, and has an acceptance probaility
-        # However, what we can do instead is to add a drift term
-        # Instead of kicking with a random gaussian, we compute the derivative
-        # with respect to X.
-        # Multiply it by sigma^2
-        # Then, clip the drift so it is not too large.
-        # New coordinates are the old + gaussian + drift
-        # Acceptance is ratio of modulus sq d wavefunction IF the move is symmetric
-        # So need to weight the modulus with a drift reweighting term.
+        // Computing modulus squa f wavefunction in new vs old coordinates
+        //  - this kicks randomly with a guassian, and has an acceptance probaility
+        // However, what we can do instead is to add a drift term
+        // Instead of kicking with a random gaussian, we compute the derivative
+        // with respect to X.
+        // Multiply it by sigma^2
+        // Then, clip the drift so it is not too large.
+        // New coordinates are the old + gaussian + drift
+        // Acceptance is ratio of modulus sq d wavefunction IF the move is symmetric
+        // So need to weight the modulus with a drift reweighting term.
 
 
-        # Spin typically thermalizes first.
-        # Fewer spin configurations allowed due to total spin conservation
-        #
+        // Spin typically thermalizes first.
+        // Fewer spin configurations allowed due to total spin conservation
+        //
+        
+        // Loop over every kick and perform the kick:
+
+        for (int i_kick = 0; i_kick < n_kicks; i_kick ++){
+             // Create a kick:
+            torch::Tensor kicked = x + kicks[i_kick];
+
+            // Compute the values of the wave function, which should be of shape
+            torch::Tensor kicked_wavefunction = wavefunction(kicked);
+
+            // Probability is the ratio of kicked **2 to original
+            torch::Tensor probability = torch::special::exp2(kicked_wavefunction / current_wavefunction);
+
+            // Find the locations where the move is accepted:
+            auto condition = probability > random_numbers[i_kick];
+
+            // Gather the current values of the wavefunction:
+            current_wavefunction = at::where(condition, kicked_wavefunction, current_wavefunction);
+
+            std::cout << "condition: " << condition << std::endl;
+            // std::cout << "kicked shape: " << kicked.sizes() << std::endl;
+            // std::cout << "x shape: " << x.sizes() << std::endl;
+
+            auto reshaped_condition = torch::reshape(condition, {-1, 1, 1});
+
+            x = at::where(reshaped_condition, kicked, x);
+
+            acceptance += torch::mean(at::_cast_Float(condition));
+
+        }
+   
+        std::cout << "Kicking done!" << std::endl;
+
+ /*
+  *
+
+
 
         for i_kick in tf.range(nkicks):
 
-            # Create a kick:
-            kicked = walkers + tf.gather(kicks, i_kick)
+           
 
-            # Compute the values of the wave function, which should be of shape
             # [nwalkers, 1]
-            kicked_wavefunction = wavefunction(kicked)
 
 
-            # Probability is the ratio of kicked **2 to original
             probability = tf.math.pow(kicked_wavefunction / current_wavefunction,2)
             # Acceptance is whether the probability for that walker is greater than
             # a random number between [0, 1).

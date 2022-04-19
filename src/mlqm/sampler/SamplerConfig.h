@@ -17,6 +17,8 @@ struct SamplerConfig{
     int n_protons;
     bool use_spin;
     bool use_isospin;
+    float kick_mean;
+    float kick_std;
 
     SamplerConfig() :  
         n_walkers(500),
@@ -25,6 +27,8 @@ struct SamplerConfig{
         n_spin_up(0),
         n_protons(0),
         use_spin(false),
-        use_isospin(false)
+        use_isospin(false),
+        kick_mean(0.0),
+        kick_std(0.2)
     {}
 };

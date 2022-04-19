@@ -16,14 +16,14 @@
 using namespace torch::indexing;
 
 struct DeepSetsCorrelatorImpl : torch::nn::Module {
-    DeepSetsCorrelatorImpl(int64_t input_size, int64_t latent_size)
-        : input_size(input_size),
-          latent_size(latent_size),
-          individual_net(input_size, latent_size),
-          aggregate_net(latent_size, 1)
+    DeepSetsCorrelatorImpl(DeepSetsCorrelaterConfig _cfg): 
+    cfg(_cfg),
+    individual_net(_cfg.individual_config),
+    aggregate_net(_cfg.aggregate_config)
     {
         register_module("individual_net", individual_net);
         register_module("aggregate_net", aggregate_net);
+
     }
 
     torch::Tensor forward(torch::Tensor x){
@@ -33,7 +33,7 @@ struct DeepSetsCorrelatorImpl : torch::nn::Module {
         int64_t n_walkers = x.sizes()[0];
         auto n_particles = x.sizes()[1];
 
-        torch::Tensor summed_output = torch::zeros({n_walkers, latent_size});
+        torch::Tensor summed_output = torch::zeros({n_walkers, cfg.latent_space});
 
         // Chunk the tensor into n_particle pieces:
         // std::vector<torch::Tensor> torch::chunk(x, n_particles, 1);
@@ -49,8 +49,7 @@ struct DeepSetsCorrelatorImpl : torch::nn::Module {
 
         return summed_output;
     }
-
-    int64_t input_size, latent_size;
+    DeepSetsCorrelaterConfig cfg;
     MLP individual_net, aggregate_net;
 };
 

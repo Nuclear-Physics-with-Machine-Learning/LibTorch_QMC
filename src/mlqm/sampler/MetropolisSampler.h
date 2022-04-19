@@ -20,7 +20,7 @@ public:
     MetropolisSampler(SamplerConfig cfg);
     ~MetropolisSampler(){}
     
-    float kick(int n_kicks, DeepSetsCorrelator wavefunction);
+    torch::Tensor kick(int n_kicks, DeepSetsCorrelator wavefunction);
 
     torch::Tensor sample(){return x;}
 

@@ -35,20 +35,20 @@ int main() {
 
   // Create a model:
 
+  DeepSetsCorrelaterConfig dsc_cfg;
 
-  int64_t latent_size = 16;
+  // int64_t latent_size = 16;
 
-  DeepSetsCorrelator dsc = DeepSetsCorrelator(sc.n_dim, latent_size);
+  DeepSetsCorrelator dsc = DeepSetsCorrelator(dsc_cfg);
 
-  // Initialize random input:
+  // // Initialize random input:
   auto input = sampler.sample();
 
-  // Run the model forward:
+  // // Run the model forward:
 
-  sampler.kick(500, dsc);
+  torch::Tensor acceptance = sampler.kick(500, dsc);
 
-  torch::Tensor w_of_x = dsc(input);
 
-  std::cout << "w_of_x : " << w_of_x << std::endl;
+  std::cout << "acceptance : " << acceptance << std::endl;
 
 }
