@@ -64,11 +64,11 @@ message("TORCH FLAGS: ${TORCH_CXX_FLAGS}")
 
 # # This will come back for configuration:
 
-# # # Add the json library
-# # set(JSON_BuildTests OFF CACHE INTERNAL "")
-# # add_subdirectory(json)
-# # message("NLOHMANN_JSON_INCLUDE_INSTALL_DIR: ${NLOHMANN_JSON_INCLUDE_INSTALL_DIR}")
-# # include_directories(json/include)
+# Add the json library
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+add_subdirectory(json)
+message("NLOHMANN_JSON_INCLUDE_INSTALL_DIR: ${NLOHMANN_JSON_INCLUDE_INSTALL_DIR}")
+include_directories(json/include)
 
 
 # message("Adding pybind11")

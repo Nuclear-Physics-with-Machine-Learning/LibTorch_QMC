@@ -13,7 +13,7 @@
 // #include <torch/extension.h>
 using namespace torch::indexing;
 
-#include "ModelConfig.h"
+#include "mlqm/config/ModelConfig.h"
 
 
 struct MLPImpl : torch::nn::Module {

@@ -1,47 +1,59 @@
 #include <iostream>
 
 #include <torch/torch.h>
-// #include <torch/extension.h>
-// #include <pybind11/pybind11.h>
 
+#include "config/config.h"
 #include "models/models.h"
 #include "sampler/sampler.h"
 
-// int main() {
-//   IndividualNet individual_net(3,16);
-
-//   auto input = torch::randn({500,2,3});
-
-//   auto output = individual_net->forward(input);
-
-//   std::cout << "OUtput: "<< output << std::endl;
-// }
-
- 
-// PYBIND11_MODULE(mlqm, m) {
-//   // torch::python::init_bindings(mlqm);
-//   // init_models(m);
-// }
 
 
 
+int main(int argc, char* argv[]) {
 
-int main() {
+  // The only argument this program should accept is a json configuration file.
+
+  if (argc == 1){
+    std::cout << "Must supply a configuration file on cmdline!  Exiting!" << std::endl;
+    return 1;
+  }
+
+  // We load it directly with json:
+  std::string fname(argv[argc - 1]);
+
+  std::cout << "config file is: " << fname << std::endl;
+
+  // Read the configuration from file:
+  std::ifstream ifs(fname);
+
+  if (! ifs.good()){
+    std::cout << "ERROR!  configuration file does not exist." << std::endl;
+    return 2;
+  }
+
+  // Init the json object:
+  json j_cfg;
+
+  try{
+    j_cfg = json::parse(ifs);
+  }
+  catch (...){
+    std::cout << "ERROR!  json file might have an error." << std::endl;
+  }
+
+
+  std::cout << "Config: " <<  j_cfg << std::endl;
+
+  // Convert the json object into a config object:
+
+  Config cfg = j_cfg.get<Config>();
+
 
   // Create a sampler:
-  SamplerConfig sc;
-
-  MetropolisSampler sampler(sc);
+  MetropolisSampler sampler(cfg.sampler);
 
   // Create a model:
-
-  DeepSetsCorrelaterConfig dsc_cfg;
-
-  // std::cout << dsc_cfg << std::endl;
-
-  // int64_t latent_size = 16;
-
-  DeepSetsCorrelator dsc = DeepSetsCorrelator(dsc_cfg);
+  DeepSetsCorrelator dsc = DeepSetsCorrelator(cfg.wavefunction);
 
   // // Initialize random input:
   auto input = sampler.sample();
@@ -52,5 +64,7 @@ int main() {
 
 
   std::cout << "acceptance : " << acceptance << std::endl;
+  
 
+  return 0;
 }

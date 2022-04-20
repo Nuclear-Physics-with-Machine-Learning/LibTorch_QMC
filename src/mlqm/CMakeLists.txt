@@ -1,3 +1,4 @@
+add_subdirectory(config)
 add_subdirectory(models)
 add_subdirectory(sampler)
 
@@ -5,6 +6,7 @@ add_subdirectory(sampler)
 # This is admittedly pretty clunky, but it gets the job done to make one object file:
 
 add_library(libmlqm SHARED
+    $<TARGET_OBJECTS:config>
     $<TARGET_OBJECTS:models>
     $<TARGET_OBJECTS:sampler>
     )
@@ -48,8 +50,8 @@ target_link_libraries(libmlqm ${TORCH_LIBRARIES})
 
 ###############################
 
-# # Link against the json library:
-# target_link_libraries(mlqm nlohmann_json::nlohmann_json)
+# Link against the json library:
+target_link_libraries(libmlqm nlohmann_json::nlohmann_json)
 
 
 

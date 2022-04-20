@@ -9,5 +9,4 @@
 
 #pragma once
 
-#include "SamplerConfig.h"
 #include "MetropolisSampler.h"

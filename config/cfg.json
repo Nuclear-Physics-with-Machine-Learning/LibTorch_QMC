@@ -1,0 +1,33 @@
+{
+    "sampler": {
+        "n_walkers" : 1000,
+        "n_particles" : 10,
+        "n_dim" : 3,
+        "n_spin_up" : 0,
+        "n_protons" : 0,
+        "use_spin" : false,
+        "use_isospin" : false,
+        "kick_mean" : 0.0,
+        "kick_std" : 0.0
+    },
+    "wavefunction" : {
+        "individual_config" : {
+            "n_input" : 3,
+            "n_output" : 32,
+            "n_layers" : 4,
+            "n_filters_per_layer" : 32,
+            "bias" : false,
+            "residual" : false
+        },
+        "aggregate_config"  : {
+            "n_input" : 32,
+            "n_output" : 1,
+            "n_layers" : 4,
+            "n_filters_per_layer" : 32,
+            "bias" : false,
+            "residual" : false
+        },
+        "confinement"       : 0.1,
+        "latent_space"      : 32
+    }
+}

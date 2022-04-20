@@ -11,7 +11,7 @@
 
 #include <torch/torch.h>
 
-#include "SamplerConfig.h"
+#include "mlqm/config/SamplerConfig.h"
 #include "mlqm/models/DeepSetsCorrelator.h"
 
 class MetropolisSampler
