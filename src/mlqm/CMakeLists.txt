@@ -1,6 +1,7 @@
 add_subdirectory(config)
 add_subdirectory(models)
 add_subdirectory(sampler)
+add_subdirectory(hamiltonians)
 
 
 # This is admittedly pretty clunky, but it gets the job done to make one object file:
@@ -9,11 +10,9 @@ add_library(libmlqm SHARED
     $<TARGET_OBJECTS:config>
     $<TARGET_OBJECTS:models>
     $<TARGET_OBJECTS:sampler>
+    $<TARGET_OBJECTS:hamiltonians>
     )
 
-set_target_properties(libmlqm PROPERTIES
-  IMPORTED_LOCATION "$ORIGIN/lib/libbar.so"
-)
 
 if(UNIX AND NOT APPLE)
     set_target_properties(libmlqm PROPERTIES 

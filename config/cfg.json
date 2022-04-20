@@ -1,7 +1,7 @@
 {
     "sampler": {
-        "n_walkers" : 1000,
-        "n_particles" : 10,
+        "n_walkers" : 10,
+        "n_particles" : 2,
         "n_dim" : 3,
         "n_spin_up" : 0,
         "n_protons" : 0,

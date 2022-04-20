@@ -18,9 +18,6 @@ def main():
     build_dir.mkdir(exist_ok=True)
 
 
-    print(build_dir)
-    print(src_dir)
-
     run_cmake(src_dir, build_dir)
     run_build(build_dir)
 

@@ -5,7 +5,7 @@
 #include "config/config.h"
 #include "models/models.h"
 #include "sampler/sampler.h"
-
+#include "hamiltonians/BaseHamiltonian.h"
 
 
 
@@ -65,6 +65,10 @@ int main(int argc, char* argv[]) {
 
   std::cout << "acceptance : " << acceptance << std::endl;
   
+
+  BaseHamiltonian h;
+
+  auto junk = h.energy(dsc, sampler.sample());
 
   return 0;
 }
