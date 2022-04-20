@@ -21,8 +21,8 @@ struct SamplerConfig{
     float kick_std;
 
     SamplerConfig() :  
-        n_walkers(500),
-        n_particles(2),
+        n_walkers(10000),
+        n_particles(10),
         n_dim(3),
         n_spin_up(0),
         n_protons(0),

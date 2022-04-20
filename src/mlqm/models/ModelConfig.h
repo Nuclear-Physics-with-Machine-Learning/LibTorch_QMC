@@ -21,7 +21,7 @@ struct MLPConfig{
         n_input(3),
         n_output(1),
         n_layers(4),
-        n_filters_per_layer(32),
+        n_filters_per_layer(16),
         bias(true),
         residual(false)
     {}
@@ -29,7 +29,7 @@ struct MLPConfig{
         n_input(in),
         n_output(out),
         n_layers(4),
-        n_filters_per_layer(32),
+        n_filters_per_layer(16),
         bias(true),
         residual(false)
     {}
@@ -42,10 +42,10 @@ struct DeepSetsCorrelaterConfig{
     int latent_space;
 
     DeepSetsCorrelaterConfig() : 
-        individual_config(3, 32),
-        aggregate_config(32, 1),
+        individual_config(3, 16),
+        aggregate_config(16, 1),
         confinement(0.1),
-        latent_space(32)
+        latent_space(16)
     {}
 
 };

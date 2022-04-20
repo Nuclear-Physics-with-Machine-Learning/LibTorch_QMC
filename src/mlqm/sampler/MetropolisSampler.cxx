@@ -67,7 +67,7 @@ torch::Tensor MetropolisSampler::kick(int n_kicks, DeepSetsCorrelator wavefuncti
             torch::Tensor kicked_wavefunction = wavefunction(kicked);
 
             // Probability is the ratio of kicked **2 to original
-            torch::Tensor probability = torch::special::exp2(kicked_wavefunction / current_wavefunction);
+            torch::Tensor probability = (kicked_wavefunction / current_wavefunction).pow_(2);
 
             // Find the locations where the move is accepted:
             auto condition = probability > random_numbers[i_kick];
@@ -75,7 +75,7 @@ torch::Tensor MetropolisSampler::kick(int n_kicks, DeepSetsCorrelator wavefuncti
             // Gather the current values of the wavefunction:
             current_wavefunction = at::where(condition, kicked_wavefunction, current_wavefunction);
 
-            std::cout << "condition: " << condition << std::endl;
+            // std::cout << "condition: " << condition << std::endl;
             // std::cout << "kicked shape: " << kicked.sizes() << std::endl;
             // std::cout << "x shape: " << x.sizes() << std::endl;
 
@@ -87,6 +87,8 @@ torch::Tensor MetropolisSampler::kick(int n_kicks, DeepSetsCorrelator wavefuncti
 
         }
    
+        acceptance /= n_kicks;
+
         std::cout << "Kicking done!" << std::endl;
 
  /*

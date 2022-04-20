@@ -22,7 +22,7 @@ struct MLPImpl : torch::nn::Module {
 
     MLPImpl(MLPConfig _cfg)
         : cfg(_cfg)
-        , layers(torch::nn::ModuleList())
+        , layers(torch::nn::Sequential())
           // layer1(torch::nn::Linear(input_size, output_size)),
           // layer2(torch::nn::Linear(output_size, output_size)),
           // layer3(torch::nn::Linear(output_size, output_size)),
@@ -40,6 +40,7 @@ struct MLPImpl : torch::nn::Module {
             std::string name = "layer" + std::to_string(i);
             auto layer = register_module(name, torch::nn::Linear(in, out));
             layers->push_back(layer);
+            layers->push_back(torch::nn::Tanh());
             in = out;
             if (i == cfg.n_layers - 2) out = cfg.n_output;
         }
@@ -52,16 +53,19 @@ struct MLPImpl : torch::nn::Module {
 
     torch::Tensor forward(torch::Tensor x){
 
+        // for (torch::nn::Module * layer : * layers){
+        //     x = layer(x);
+        // }
         // auto s = torch::tanh(layer1(x));
         // s = torch::tanh(layer2(s));
         // s = torch::tanh(layer3(s));
         // s = layer4(s);  
         // return s;
-        return x;
+        return layers->forward(x);
     }
 
     MLPConfig cfg;
-    torch::nn::ModuleList layers;
+    torch::nn::Sequential layers;
 };
 
 TORCH_MODULE(MLP);

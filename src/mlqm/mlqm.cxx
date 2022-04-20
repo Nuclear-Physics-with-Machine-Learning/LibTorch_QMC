@@ -37,6 +37,8 @@ int main() {
 
   DeepSetsCorrelaterConfig dsc_cfg;
 
+  // std::cout << dsc_cfg << std::endl;
+
   // int64_t latent_size = 16;
 
   DeepSetsCorrelator dsc = DeepSetsCorrelator(dsc_cfg);
