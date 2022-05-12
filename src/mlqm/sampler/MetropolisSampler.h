@@ -17,9 +17,9 @@
 class MetropolisSampler
 {
 public:
-    MetropolisSampler(SamplerConfig cfg);
+    MetropolisSampler(SamplerConfig cfg, torch::TensorOptions options);
     ~MetropolisSampler(){}
-    
+
     torch::Tensor kick(int n_kicks, DeepSetsCorrelator wavefunction);
 
     torch::Tensor sample(){return x;}
@@ -30,5 +30,7 @@ private:
     torch::Tensor x;
 
     SamplerConfig cfg;
+
+    torch::TensorOptions opts;
 
 };

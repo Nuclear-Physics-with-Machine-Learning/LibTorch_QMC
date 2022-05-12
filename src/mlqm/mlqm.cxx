@@ -1,4 +1,5 @@
 #include <iostream>
+#include <chrono>
 
 #include <torch/torch.h>
 
@@ -48,27 +49,62 @@ int main(int argc, char* argv[]) {
 
   Config cfg = j_cfg.get<Config>();
 
+  // Create default tensor options, passed for all tensor creation:
+
+  auto options =
+  torch::TensorOptions()
+    .dtype(torch::kFloat32)
+    .layout(torch::kStrided);
+
+  // Default device?
+  // torch::Device device(torch::kCPU);
+  if (torch::cuda::is_available()) {
+    std::cout << "CUDA is available! Training on GPU." << std::endl;
+    options = options.device(torch::kCUDA);
+  }
+
+  std::cout << "Device selected: " << options.device() << std::endl;
+  std::cout << "Requires grad?: " << options.requires_grad() << std::endl;
 
   // Create a sampler:
-  MetropolisSampler sampler(cfg.sampler);
+  MetropolisSampler sampler(cfg.sampler, options);
 
   // Create a model:
-  DeepSetsCorrelator dsc = DeepSetsCorrelator(cfg.wavefunction);
+  DeepSetsCorrelator dsc = DeepSetsCorrelator(cfg.wavefunction, options);
+  dsc -> to(options.device());
+
 
   // // Initialize random input:
   auto input = sampler.sample();
 
-  // // Run the model forward:
+  std::cout << "input.sizes(): "<< input.sizes() << std::endl;
+
+
+  // Run the model forward:
+
+  auto start = std::chrono::high_resolution_clock::now();
 
   torch::Tensor acceptance = sampler.kick(500, dsc);
+  auto stop = std::chrono::high_resolution_clock::now();
 
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
 
   std::cout << "acceptance : " << acceptance << std::endl;
-  
+  std::cout << "Kick time: " << (duration.count() / 1000.) << " seconds" << std::endl;
+
+  start = std::chrono::high_resolution_clock::now();
+
+  acceptance = sampler.kick(500, dsc);
+  stop = std::chrono::high_resolution_clock::now();
+
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+
+  std::cout << "acceptance : " << acceptance << std::endl;
+  std::cout << "Kick time: " << (duration.count() / 1000.) << " seconds" << std::endl;
 
   BaseHamiltonian h;
 
-  auto junk = h.energy(dsc, sampler.sample());
+  // auto junk = h.energy(dsc, sampler.sample());
 
   return 0;
 }

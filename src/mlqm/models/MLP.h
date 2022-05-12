@@ -20,9 +20,10 @@ struct MLPImpl : torch::nn::Module {
 
     MLPImpl(){}
 
-    MLPImpl(MLPConfig _cfg)
+    MLPImpl(MLPConfig _cfg, torch::TensorOptions options)
         : cfg(_cfg)
         , layers(torch::nn::Sequential())
+        , opts(options)
           // layer1(torch::nn::Linear(input_size, output_size)),
           // layer2(torch::nn::Linear(output_size, output_size)),
           // layer3(torch::nn::Linear(output_size, output_size)),
@@ -38,7 +39,10 @@ struct MLPImpl : torch::nn::Module {
         // Build up a list of layers:
         for (int i = 0; i < cfg.n_layers; i ++){
             std::string name = "layer" + std::to_string(i);
-            auto layer = register_module(name, torch::nn::Linear(in, out));
+            auto layer = torch::nn::Linear(in, out);
+            // auto layer = register_module(name, torch::nn::Linear(in, out));
+            // Use the specified precision:
+            // layer ->to(opts.dtype());
             layers->push_back(layer);
             layers->push_back(torch::nn::Tanh());
             in = out;
@@ -51,21 +55,11 @@ struct MLPImpl : torch::nn::Module {
         // register_module("layer4", layer4);
     }
 
-    torch::Tensor forward(torch::Tensor x){
-
-        // for (torch::nn::Module * layer : * layers){
-        //     x = layer(x);
-        // }
-        // auto s = torch::tanh(layer1(x));
-        // s = torch::tanh(layer2(s));
-        // s = torch::tanh(layer3(s));
-        // s = layer4(s);  
-        // return s;
-        return layers->forward(x);
-    }
+    torch::Tensor forward(torch::Tensor x);
 
     MLPConfig cfg;
     torch::nn::Sequential layers;
+    torch::TensorOptions opts;
 };
 
 TORCH_MODULE(MLP);
@@ -75,4 +69,3 @@ TORCH_MODULE(MLP);
 // #include <pybind11/pybind11.h>
 // // Declare python binding function
 // void init_MLP(pybind11::module m);
-

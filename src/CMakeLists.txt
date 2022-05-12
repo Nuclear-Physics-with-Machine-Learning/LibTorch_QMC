@@ -37,22 +37,17 @@ message("TORCH Libraries: ${TORCH_LIBRARIES}")
 message("TORCH FLAGS: ${TORCH_CXX_FLAGS}")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
-# # From the torch example:
-# add_executable(dcgan dcgan.cpp)
-# target_link_libraries(dcgan "${TORCH_LIBRARIES}")
-# set_property(TARGET dcgan PROPERTY CXX_STANDARD 14)
 
-
-
-# if(OPENMP)
-#   find_package(OpenMP)
-#   if(OpenMP_CXX_FOUND)
-#       MESSAGE(STATUS "OpenMP Include directories ${OpenMP_CXX_INCLUDE_DIRS}")
-#       include_directories(${OpenMP_C_INCLUDE_DIRS})
-#       include_directories(${OpenMP_CXX_INCLUDE_DIRS})
-#       add_definitions(-DLARCV_OPENMP)
-#   endif()
-# endif()
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    MESSAGE(STATUS "OpenMP CXX Include directories ${OpenMP_CXX_INCLUDE_DIRS}")
+    MESSAGE(STATUS "OpenMP CXX LibNames ${OpenMP_CXX_LIB_NAMES}")
+    MESSAGE(STATUS "OpenMP CXX Library ${OpenMP_CXX_LIBRARY}")
+    MESSAGE(STATUS "OpenMP CXX Include directories ${OpenMP_CXX_INCLUDE_DIRS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    include_directories(${OpenMP_CXX_INCLUDE_DIRS})
+    add_definitions(-DOPENMP_FOUND)
+endif()
 
 # This package needs numpy::
 

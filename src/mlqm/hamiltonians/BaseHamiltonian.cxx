@@ -2,7 +2,7 @@
 
 
 torch::Tensor BaseHamiltonian::energy(
-    DeepSetsCorrelator wavefunction, 
+    DeepSetsCorrelator wavefunction,
     torch::Tensor inputs)
 {
     auto junk = compute_derivatives(wavefunction, inputs);
@@ -11,10 +11,10 @@ torch::Tensor BaseHamiltonian::energy(
 
 
 std::vector<torch::Tensor> BaseHamiltonian::compute_derivatives(
-    DeepSetsCorrelator wavefunction, 
+    DeepSetsCorrelator wavefunction,
     torch::Tensor inputs)
 {
-  
+
     std::cout << "inputs.requires_grad() " << inputs.requires_grad() << std::endl;
 
 
@@ -31,11 +31,11 @@ std::vector<torch::Tensor> BaseHamiltonian::compute_derivatives(
     torch::Tensor v = torch::ones(inputs.sizes());
     w_of_x.backward(v);
 
-    auto grad_output = torch::ones_like(w_of_x);
-
-    auto gradient = torch::autograd::grad({w_of_x}, {inputs});
-
-    std::cout << "grad_output.sizes() " << grad_output.sizes() << std::endl;
+    // auto grad_output = torch::ones_like(w_of_x);
+    //
+    // auto gradient = torch::autograd::grad({w_of_x}, {inputs});
+    //
+    // std::cout << "grad_output.sizes() " << grad_output.sizes() << std::endl;
 
 /*
         n_walkers = inputs.shape[0]

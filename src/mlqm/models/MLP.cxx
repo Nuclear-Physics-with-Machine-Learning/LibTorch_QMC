@@ -12,3 +12,9 @@
 //     // MLP.def("forward",        &Class::forward);
 
 // }
+
+torch::Tensor MLPImpl::forward(torch::Tensor x){
+    // c10::InferenceMode guard(true);
+
+    return layers->forward(x);
+}
