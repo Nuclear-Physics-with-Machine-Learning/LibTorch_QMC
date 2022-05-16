@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
   auto w_of_x = dsc(input);
   stop = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-  std::cout << "Just WF time: " << (duration.count() / 1000.) << " seconds" << std::endl;
+  std::cout << "Just WF time: " << (duration.count()) << " milliseconds" << std::endl;
   BaseHamiltonian h;
 
   // auto junk = h.energy(dsc, sampler.sample());
