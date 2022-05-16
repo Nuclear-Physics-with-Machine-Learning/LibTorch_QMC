@@ -108,6 +108,12 @@ int main(int argc, char* argv[]) {
   std::cout << "acceptance : " << acceptance << std::endl;
   std::cout << "Kick time: " << (duration.count() / 1000.) << " seconds" << std::endl;
 
+
+  start = std::chrono::high_resolution_clock::now();
+  auto w_of_x = dsc(input);
+  stop = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+  std::cout << "Just WF time: " << (duration.count() / 1000.) << " seconds" << std::endl;
   BaseHamiltonian h;
 
   // auto junk = h.energy(dsc, sampler.sample());
