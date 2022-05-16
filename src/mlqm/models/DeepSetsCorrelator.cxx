@@ -1,8 +1,8 @@
 #include "DeepSetsCorrelator.h"
 
-// #ifdef OPENMP_FOUND
+#ifdef OPENMP_FOUND
 #include <omp.h>
-// #endif
+#endif
 
 // void init_DSC(pybind11::module m){
 //     using Class = DeepSetsCorrelatorImpl;
@@ -21,23 +21,29 @@ torch::Tensor DeepSetsCorrelatorImpl::forward(torch::Tensor x){
 
 
     int64_t n_walkers = x.sizes()[0];
-    auto n_particles = x.sizes()[1];
+    int64_t n_particles = x.sizes()[1];
+    int64_t n_dim = x.sizes()[2];
 
     // std::cout << "summed_output.device(): "<< summed_output.device() << std::endl;
 
     // Chunk the tensor into n_particle pieces:
     // std::vector<torch::Tensor> torch::chunk(x, n_particles, 1);
 
+    auto individual_net_response = individual_net(x);
 
-    torch::Tensor summed_output = torch::zeros({n_walkers, cfg.individual_config.n_output}, opts);
-    for (int i = 0; i < n_particles; i++){
-        // index = at::indexing::TensorIndex(int(i));
-        auto s = x.index({Slice(), i});
-        // std::cout << "s.sizes(): "<< s.sizes() << std::endl;
-        // std::cout << "individual_net(s).sizes(): "<< individual_net(s).sizes() << std::endl;
+    auto summed_output = individual_net_response.sum(1);
+    // std::cout << "summed_output.sizes(): "<< summed_output.sizes() << std::endl;
+     
 
-        summed_output += individual_net(s);
-    }
+    // torch::Tensor summed_output = torch::zeros({n_walkers, cfg.individual_config.n_output}, opts);
+    // for (int i = 0; i < n_particles; i++){
+    //     // index = at::indexing::TensorIndex(int(i));
+    //     auto s = x.index({Slice(), i});
+    //     // std::cout << "s.sizes(): "<< s.sizes() << std::endl;
+    //     // std::cout << "individual_net(s).sizes(): "<< individual_net(s).sizes() << std::endl;
+
+    //     summed_output += individual_net(s);
+    // }
 
 /*
     std::vector<torch::Tensor> individual_outputs;
@@ -70,4 +76,5 @@ torch::Tensor DeepSetsCorrelatorImpl::forward(torch::Tensor x){
     // std::cout << "confinement sizes: " << confinement.sizes() << std::endl;
 
     return summed_output;
+
 }

@@ -49,6 +49,12 @@ int main(int argc, char* argv[]) {
 
   Config cfg = j_cfg.get<Config>();
 
+  // How many threads?
+  // at::set_num_interop_threads(4);
+  // at::set_num_threads(1);
+  // std::cout << "Using this many threads for interop: " <<  at::get_num_interop_threads() << std::endl;
+
+
   // Create default tensor options, passed for all tensor creation:
 
   auto options =
@@ -84,7 +90,7 @@ int main(int argc, char* argv[]) {
 
   auto start = std::chrono::high_resolution_clock::now();
 
-  torch::Tensor acceptance = sampler.kick(500, dsc);
+  torch::Tensor acceptance = sampler.kick(250, dsc);
   auto stop = std::chrono::high_resolution_clock::now();
 
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
@@ -94,7 +100,7 @@ int main(int argc, char* argv[]) {
 
   start = std::chrono::high_resolution_clock::now();
 
-  acceptance = sampler.kick(500, dsc);
+  acceptance = sampler.kick(250, dsc);
   stop = std::chrono::high_resolution_clock::now();
 
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
