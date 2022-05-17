@@ -22,7 +22,7 @@ public:
 
     torch::Tensor kick(int n_kicks, DeepSetsCorrelator wavefunction);
 
-    torch::Tensor sample(){return x;}
+    torch::Tensor sample(){return torch::clone(x);}
 
 private:
 

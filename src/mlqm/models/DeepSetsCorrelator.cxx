@@ -41,11 +41,12 @@ torch::Tensor DeepSetsCorrelatorImpl::forward(torch::Tensor x){
 
     summed_output = aggregate_net(summed_output);
 
+    summed_output = summed_output.reshape({x.sizes()[0],});
+
     // Calculate the confinement:
     torch::Tensor exp = x.pow(2).sum({1,2});
     auto confinement = -cfg.confinement * exp;
-    // std::cout << "confinement sizes: " << confinement.sizes() << std::endl;
 
-    return summed_output;
+    return summed_output*confinement;
 
 }

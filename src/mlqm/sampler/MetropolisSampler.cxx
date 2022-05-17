@@ -31,7 +31,7 @@ torch::Tensor MetropolisSampler::kick(int n_kicks, DeepSetsCorrelator wavefuncti
     torch::Tensor current_wavefunction = wavefunction(x);
 
     // Generate a long set of random number from which we will pull:
-    torch::Tensor random_numbers = torch::rand({n_kicks, cfg.n_walkers,1}, opts);
+    torch::Tensor random_numbers = torch::rand({n_kicks, cfg.n_walkers}, opts);
 
     // Generate a long list of kicks:
     torch::Tensor kicks = torch::randn({n_kicks, cfg.n_walkers,cfg.n_particles,cfg.n_dim}, opts);
@@ -92,6 +92,8 @@ torch::Tensor MetropolisSampler::kick(int n_kicks, DeepSetsCorrelator wavefuncti
     acceptance /= n_kicks;
 
     std::cout << "Kicking done!" << std::endl;
+
+
     return acceptance;
 
 }

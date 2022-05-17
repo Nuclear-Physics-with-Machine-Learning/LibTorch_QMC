@@ -6,7 +6,7 @@
 #include "config/config.h"
 #include "models/models.h"
 #include "sampler/sampler.h"
-#include "hamiltonians/BaseHamiltonian.h"
+#include "hamiltonians/NuclearHamiltonian.h"
 
 
 
@@ -71,6 +71,9 @@ int main(int argc, char* argv[]) {
 
   std::cout << "Device selected: " << options.device() << std::endl;
   std::cout << "Requires grad?: " << options.requires_grad() << std::endl;
+  
+  // Turn off inference mode at the highest level
+  c10::InferenceMode guard(false);
 
   // Create a sampler:
   MetropolisSampler sampler(cfg.sampler, options);
@@ -85,15 +88,24 @@ int main(int argc, char* argv[]) {
 
   std::cout << "input.sizes(): "<< input.sizes() << std::endl;
 
+  auto w_of_x = dsc(input);
+
+  auto start = std::chrono::high_resolution_clock::now();
+  w_of_x = dsc(input);
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+  std::cout << "Just WF time: " << (duration.count()) << " milliseconds" << std::endl;
+  std::cout << "w_of_x.sizes(): " << w_of_x.sizes() << std::endl;
+
 
   // Run the model forward:
 
-  auto start = std::chrono::high_resolution_clock::now();
+  start = std::chrono::high_resolution_clock::now();
 
   torch::Tensor acceptance = sampler.kick(250, dsc);
-  auto stop = std::chrono::high_resolution_clock::now();
+  stop = std::chrono::high_resolution_clock::now();
 
-  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
 
   std::cout << "acceptance : " << acceptance << std::endl;
   std::cout << "Kick time: " << (duration.count() / 1000.) << " seconds" << std::endl;
@@ -109,14 +121,10 @@ int main(int argc, char* argv[]) {
   std::cout << "Kick time: " << (duration.count() / 1000.) << " seconds" << std::endl;
 
 
-  start = std::chrono::high_resolution_clock::now();
-  auto w_of_x = dsc(input);
-  stop = std::chrono::high_resolution_clock::now();
-  duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-  std::cout << "Just WF time: " << (duration.count()) << " milliseconds" << std::endl;
-  BaseHamiltonian h;
+  NuclearHamiltonian h(options);
 
-  // auto junk = h.energy(dsc, sampler.sample());
+  auto junk = h.energy(dsc, sampler.sample());
+
 
   return 0;
 }
