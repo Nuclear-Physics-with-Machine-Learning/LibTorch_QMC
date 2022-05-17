@@ -66,6 +66,9 @@ message("NLOHMANN_JSON_INCLUDE_INSTALL_DIR: ${NLOHMANN_JSON_INCLUDE_INSTALL_DIR}
 include_directories(json/include)
 
 
+# Here is the testing library:
+add_subdirectory("Catch2")
+
 # message("Adding pybind11")
 # find_package(pybind11 REQUIRED)
 # include_directories(${PYBIND11_INCLUDE_DIR})

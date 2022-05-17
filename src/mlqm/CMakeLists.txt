@@ -101,6 +101,14 @@ install(TARGETS mlqm
     INCLUDES DESTINATION ${CMAKE_PACKAGE_DIR}/include
     )
 
+# Add a test executable:
+add_executable(tests tests.cxx)
+target_link_libraries(tests PRIVATE Catch2::Catch2WithMain libmlqm)
+
+# # This is from the docs ... 
+# # These tests need their own main
+# add_executable(custom-main-tests test.cpp test-main.cpp)
+# target_link_libraries(custom-main-tests PRIVATE Catch2::Catch2)
 
 
 # # Install mlqm wrapper library

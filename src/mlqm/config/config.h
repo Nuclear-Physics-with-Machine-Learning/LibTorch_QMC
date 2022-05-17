@@ -11,6 +11,7 @@
 
 #include "SamplerConfig.h"
 #include "ModelConfig.h"
+#include "HamiltonianConfig.h"
 
 
 struct Config{
