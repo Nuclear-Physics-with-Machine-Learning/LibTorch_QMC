@@ -24,10 +24,7 @@ struct MLPImpl : torch::nn::Module {
         : cfg(_cfg)
         , layers(torch::nn::Sequential())
         , opts(options)
-          // layer1(torch::nn::Linear(input_size, output_size)),
-          // layer2(torch::nn::Linear(output_size, output_size)),
-          // layer3(torch::nn::Linear(output_size, output_size)),
-          // layer4(torch::nn::Linear(output_size, output_size))
+
     {
 
         register_module("layers", layers);

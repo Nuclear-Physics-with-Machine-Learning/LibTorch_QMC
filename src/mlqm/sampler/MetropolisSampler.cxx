@@ -16,10 +16,25 @@ MetropolisSampler::MetropolisSampler(SamplerConfig _cfg, torch::TensorOptions op
 {
     // Initialize the tensor
 
-    this -> x = torch::randn({cfg.n_walkers,cfg.n_particles,cfg.n_dim}, opts);
+    this -> x       = torch::randn({cfg.n_walkers,cfg.n_particles,cfg.n_dim}, opts);
+    if(_cfg.use_spin){
+        this -> spin    = -1. * torch::ones({cfg.n_walkers,cfg.n_particles}, opts); // spin either up/down
+        // Set a fixed number to 1:
+        for (int64_t i = 0; i < cfg.n_spin_up; i++){
+            spin.index_put_({Slice{}, i},1.0);        
+        }
+    }
+    if(_cfg.use_isospin){
+        this -> isospin = -1 * torch::ones({cfg.n_walkers,cfg.n_particles}, opts); // isospin either up/down
+        // Set a fixed number to 1:
+        for (int64_t i = 0; i < cfg.n_protons; i++){
+            isospin.index_put_({Slice{}, i},1.0);
+        }
+    }
+
 }
 
-torch::Tensor MetropolisSampler::kick(int n_kicks, DeepSetsCorrelator wavefunction){
+torch::Tensor MetropolisSampler::kick(int n_kicks, ManyBodyWavefunction wavefunction){
 
     // Apply inference mode in this function
     c10::InferenceMode guard(true);

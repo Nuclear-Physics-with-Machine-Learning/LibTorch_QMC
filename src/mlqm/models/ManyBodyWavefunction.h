@@ -1,52 +1,41 @@
-// /**
-//  * @defgroup   MANYBODYWAVEFUNCTION Many Body Wavefunction
-//  *
-//  * @brief      This file implements Many Body Wavefunction.
-//  *
-//  * @author     Corey.adams
-//  * @date       2022
-//  */
+/**
+ * @defgroup   MANYBODYWAVEFUNCTION Many Body Wavefunction
+ *
+ * @brief      This file implements Many Body Wavefunction.
+ *
+ * @author     Corey.adams
+ * @date       2022
+ */
 
-// #pragma once
+#pragma once
 
+#include "mlqm/config/ModelConfig.h"
+#include "DeepSetsCorrelator.h"
+#include "MLP.h"
 
-// struct ManyBodyWavefunctionImpl : torch::nn::Module {
-//     ManyBodyWavefunctionImpl(int64_t input_size, int64_t latent_size)
-//         : input_size(input_size),
-//           latent_size(latent_size),
-//           individual_net(input_size, latent_size),
-//           aggregate_net(latent_size, 1)
-//     {
-//         register_module("individual_net", individual_net);
-//         register_module("aggregate_net", aggregate_net);
-//     }
+struct ManyBodyWavefunctionImpl : torch::nn::Module {
+    ManyBodyWavefunctionImpl(ManyBodyWavefunctionConfig _cfg, torch::TensorOptions options, int64_t n_particles)
+        : cfg(_cfg),
+          dsc(_cfg.dsc_config, options),
+          opts(options)
+    {
+        register_module("dsc", dsc);
+        register_module("spatial_nets", spatial_nets);
 
-//     torch::Tensor forward(torch::Tensor x){
+        // Initialize a spatial net for every particle:
+        for (int64_t i = 0; i < n_particles; i++){
+            auto spatial_net = MLP(cfg.spatial_config, options);
+            spatial_nets->push_back(spatial_net);
+        }
 
-//         // The input will be of the shape [N_walkers, n_particles, n_dim]
+    }
 
-//         int64_t n_walkers = x.sizes()[0];
-//         auto n_particles = x.sizes()[1];
+    torch::Tensor forward(torch::Tensor x);
 
-//         torch::Tensor summed_output = torch::zeros({n_walkers, latent_size});
+    ManyBodyWavefunctionConfig cfg;
+    DeepSetsCorrelator dsc;
+    torch::nn::ModuleList spatial_nets;
+    torch::TensorOptions opts;
+};
 
-//         // Chunk the tensor into n_particle pieces:
-//         // std::vector<torch::Tensor> torch::chunk(x, n_particles, 1);
-
-
-//         for (int i = 0; i < n_particles; i++){
-//             // index = at::indexing::TensorIndex(int(i));
-//             auto s = x.index({Slice(), i});
-//             summed_output += individual_net(s);
-//         }
-
-//         summed_output = aggregate_net(summed_output);
-
-//         return summed_output;
-//     }
-
-//     int64_t input_size, latent_size;
-//     DeepSetsCorrelator dsc;
-// };
-
-// TORCH_MODULE(ManyBodyWavefunction);
+TORCH_MODULE(ManyBodyWavefunction);

@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
 
   auto options =
   torch::TensorOptions()
-    .dtype(torch::kFloat32)
+    .dtype(torch::kFloat64)
     .layout(torch::kStrided);
 
   // Default device?
@@ -79,19 +79,21 @@ int main(int argc, char* argv[]) {
   MetropolisSampler sampler(cfg.sampler, options);
 
   // Create a model:
-  DeepSetsCorrelator dsc = DeepSetsCorrelator(cfg.wavefunction, options);
-  dsc -> to(options.device());
+  ManyBodyWavefuncion wavefuntion = ManyBodyWavefuncion(cfg.wavefunction, options);
+  wavefuntion -> to(options.device());
+  // wavefuntion -> to(options.dtype());
+  wavefuntion -> to(torch::kFloat64);
 
 
   // // Initialize random input:
-  auto input = sampler.sample();
+  auto input = sampler.sample_x();
 
   std::cout << "input.sizes(): "<< input.sizes() << std::endl;
 
-  auto w_of_x = dsc(input);
+  auto w_of_x = wavefuntion(input);
 
   auto start = std::chrono::high_resolution_clock::now();
-  w_of_x = dsc(input);
+  w_of_x = wavefuntion(input);
   auto stop = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
   std::cout << "Just WF time: " << (duration.count()) << " milliseconds" << std::endl;
@@ -102,7 +104,7 @@ int main(int argc, char* argv[]) {
 
   start = std::chrono::high_resolution_clock::now();
 
-  torch::Tensor acceptance = sampler.kick(250, dsc);
+  torch::Tensor acceptance = sampler.kick(250, wavefuntion);
   stop = std::chrono::high_resolution_clock::now();
 
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
@@ -112,7 +114,7 @@ int main(int argc, char* argv[]) {
 
   start = std::chrono::high_resolution_clock::now();
 
-  acceptance = sampler.kick(250, dsc);
+  acceptance = sampler.kick(250, wavefuntion);
   stop = std::chrono::high_resolution_clock::now();
 
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
@@ -123,7 +125,7 @@ int main(int argc, char* argv[]) {
 
   NuclearHamiltonian h(options);
 
-  auto junk = h.energy(dsc, sampler.sample());
+  auto junk = h.energy(wavefuntion, sampler.sample_x());
 
 
   return 0;

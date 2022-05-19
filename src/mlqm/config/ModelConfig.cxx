@@ -39,3 +39,16 @@ void from_json(const json& j, DeepSetsCorrelaterConfig& s ){
     j.at("confinement").get_to(s.confinement);
     j.at("latent_space").get_to(s.latent_space);
 }
+
+
+void to_json(json& j, const ManyBodyWavefunctionConfig& m){
+    j = json{
+        {"dsc_config" ,    m.dsc_config},
+        {"spatial_config", m.spatial_config},
+    };
+}
+void from_json(const json& j, ManyBodyWavefunctionConfig& m){
+    j.at("dsc_config").get_to(m.dsc_config);
+    j.at("spatial_config").get_to(m.spatial_config);
+}
+

@@ -2,7 +2,7 @@
 
 
 torch::Tensor NuclearHamiltonian::energy(
-    DeepSetsCorrelator wavefunction,
+    ManyBodyWavefunction wavefunction,
     torch::Tensor inputs)
 {
     auto junk = compute_derivatives(wavefunction, inputs);
@@ -11,7 +11,7 @@ torch::Tensor NuclearHamiltonian::energy(
 
 
 std::vector<torch::Tensor> NuclearHamiltonian::compute_derivatives(
-    DeepSetsCorrelator wavefunction,
+    ManyBodyWavefunction wavefunction,
     torch::Tensor inputs)
 {
 

@@ -11,7 +11,7 @@
 
 #include <torch/torch.h>
 
-#include "mlqm/models/DeepSetsCorrelator.h"
+#include "mlqm/models/ManyBodyWavefunction.h"
 #include "mlqm/config/HamiltonianConfig.h"
 
 class NuclearHamiltonian
@@ -29,7 +29,7 @@ public:
      *
      * @return     Tensor of per-configuration energy
      */
-    torch::Tensor energy(DeepSetsCorrelator wavefunction, torch::Tensor inputs);
+    torch::Tensor energy(ManyBodyWavefunction wavefunction, torch::Tensor inputs);
 
     /**
      * @brief      Compute the real kinetic energy
@@ -52,8 +52,6 @@ public:
      */
     torch::Tensor kinetic_energy_jf(torch::Tensor w_of_x, torch::Tensor dw_dx);
 
-private:
-
     /**
      * @brief      Calculates the derivatives.
      *
@@ -63,7 +61,11 @@ private:
      * @return     Wavefunction value + derivatives (1st, 2nd order Hessian diagonal).
      */
     std::vector<torch::Tensor> compute_derivatives(
-        DeepSetsCorrelator wavefunction, torch::Tensor inputs);
+        ManyBodyWavefunction wavefunction, torch::Tensor inputs);
+
+
+private:
+
 
     // Copy of tensor creation ops, used in compute derivatives
     torch::TensorOptions _opts;
