@@ -20,8 +20,8 @@ static auto default_config = R"(
         "kick_mean" : 0.0,
         "kick_std" : 0.0
     },
-    "wavefunction" : {
-        "individual_config" : {
+    "wavefunction": {
+        "spatial_config": {
             "n_input" : 3,
             "n_output" : 32,
             "n_layers" : 4,
@@ -29,16 +29,26 @@ static auto default_config = R"(
             "bias" : false,
             "residual" : false
         },
-        "aggregate_config"  : {
-            "n_input" : 32,
-            "n_output" : 1,
-            "n_layers" : 4,
-            "n_filters_per_layer" : 32,
-            "bias" : false,
-            "residual" : false
-        },
-        "confinement"       : 0.1,
-        "latent_space"      : 32
+        "correlator_config" : {
+            "individual_config" : {
+                "n_input" : 3,
+                "n_output" : 32,
+                "n_layers" : 4,
+                "n_filters_per_layer" : 32,
+                "bias" : false,
+                "residual" : false
+            },
+            "aggregate_config"  : {
+                "n_input" : 32,
+                "n_output" : 1,
+                "n_layers" : 4,
+                "n_filters_per_layer" : 32,
+                "bias" : false,
+                "residual" : false
+            },
+            "confinement"       : 0.1,
+            "latent_space"      : 32
+        }
     }
 }
 )"_json;
@@ -91,15 +101,16 @@ TEST_CASE( "Differentiation matches numerical approximations", "[wavefunction]")
 
     // Turn off inference mode at the highest level
     c10::InferenceMode guard(false);
-    
+
     // Create a sampler:
     MetropolisSampler sampler(cfg.sampler, options);
 
     NuclearHamiltonian h(options);
 
 
-    DeepSetsCorrelator wavefunction = DeepSetsCorrelator(cfg.wavefunction, options);
+    ManyBodyWavefunction wavefunction = ManyBodyWavefunction(cfg.wavefunction, options, cfg.sampler.n_particles);
     wavefunction -> to(torch::kDouble);
+    wavefunction -> to(options.device());
 
     auto x = sampler.sample_x();
 
@@ -114,9 +125,9 @@ TEST_CASE( "Differentiation matches numerical approximations", "[wavefunction]")
     for (int64_t i_particle = 0; i_particle < cfg.sampler.n_particles; i_particle ++){
         for (int64_t j_dim = 0; j_dim < cfg.sampler.n_dim; j_dim ++){
             // Numerical differentiation along an axis
-            
-            // Create a kick for this 
-            auto kick = torch::zeros_like(x);
+
+            // Create a kick for this
+            auto kick = torch::zeros_like(x, options);
             kick.index_put_({Slice(), i_particle, j_dim}, kick_size);
 
             auto x_up = x + kick;
@@ -132,6 +143,7 @@ TEST_CASE( "Differentiation matches numerical approximations", "[wavefunction]")
 
             // Find the largerst absolute difference between the numerical and analytical deriv:
             auto diff = torch::max(torch::abs(this_dwdx_slice - numerical_dw_dx));
+            // std::cout << "diff: " << diff << std::endl;
             auto pass = (diff < 2*kick_size).to(torch::kBool).cpu();
             REQUIRE(pass.data_ptr<bool>()[0]);
 
@@ -143,7 +155,7 @@ TEST_CASE( "Differentiation matches numerical approximations", "[wavefunction]")
             auto numerical_d2w_dx2 = (w_up - 2*w_of_x + w_down) / (kick_size*kick_size);
 
             auto this_d2wdx2_slice = d2w_dx2.index({Slice(), i_particle, j_dim});
-            
+
             auto diff_2nd = torch::max(torch::abs(this_d2wdx2_slice - numerical_d2w_dx2));
             // std::cout << "dif2nd: " << diff_2nd << std::endl;
             auto pass2nd = (diff_2nd < kick_size).to(torch::kBool).cpu();
@@ -154,6 +166,3 @@ TEST_CASE( "Differentiation matches numerical approximations", "[wavefunction]")
     }
 
 }
-
-
-    

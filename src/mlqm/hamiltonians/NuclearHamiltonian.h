@@ -19,7 +19,7 @@ class NuclearHamiltonian
 public:
     NuclearHamiltonian(torch::TensorOptions options){_opts = options;}
     ~NuclearHamiltonian(){}
-    
+
 
     /**
      * @brief      Calculate the energy of the wavefunction at the specified inputs
@@ -34,7 +34,7 @@ public:
     /**
      * @brief      Compute the real kinetic energy
      *
-     * @param[in]  w_of_x   The w of x
+     * @param[in]  w_of_x   The wavefunction values
      * @param[in]  d2w_dx2  The d 2 w dx 2
      *
      * @return     Tensor of per-configuration kinetic energy
@@ -45,12 +45,21 @@ public:
     /**
      * @brief      Compute the JF kinetic energy
      *
-     * @param[in]  w_of_x   The w of x
+     * @param[in]  w_of_x   The wavefunction values
      * @param[in]  d2w_dx2  The d 2 w dx 2
      *
      * @return     Tensor of per-configuration JF kinetic energy
      */
     torch::Tensor kinetic_energy_jf(torch::Tensor w_of_x, torch::Tensor dw_dx);
+
+    /**
+     * @brief      Compute the Potential Energy
+     *
+     * @param[in]  w_of_x   The wavefunction values
+     *
+     * @return     Tensor of per-configuration potential energy
+     */
+    torch::Tensor potential_energy(torch::Tensor inputs);
 
     /**
      * @brief      Calculates the derivatives.

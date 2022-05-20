@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
 
   std::cout << "Device selected: " << options.device() << std::endl;
   std::cout << "Requires grad?: " << options.requires_grad() << std::endl;
-  
+
   // Turn off inference mode at the highest level
   c10::InferenceMode guard(false);
 
@@ -79,10 +79,9 @@ int main(int argc, char* argv[]) {
   MetropolisSampler sampler(cfg.sampler, options);
 
   // Create a model:
-  ManyBodyWavefuncion wavefuntion = ManyBodyWavefuncion(cfg.wavefunction, options);
-  wavefuntion -> to(options.device());
-  // wavefuntion -> to(options.dtype());
-  wavefuntion -> to(torch::kFloat64);
+  ManyBodyWavefunction wavefunction = ManyBodyWavefunction(cfg.wavefunction, options, cfg.sampler.n_particles);
+  wavefunction -> to(options.device());
+  wavefunction -> to(torch::kFloat64);
 
 
   // // Initialize random input:
@@ -90,10 +89,10 @@ int main(int argc, char* argv[]) {
 
   std::cout << "input.sizes(): "<< input.sizes() << std::endl;
 
-  auto w_of_x = wavefuntion(input);
+  auto w_of_x = wavefunction(input);
 
   auto start = std::chrono::high_resolution_clock::now();
-  w_of_x = wavefuntion(input);
+  w_of_x = wavefunction(input);
   auto stop = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
   std::cout << "Just WF time: " << (duration.count()) << " milliseconds" << std::endl;
@@ -104,7 +103,7 @@ int main(int argc, char* argv[]) {
 
   start = std::chrono::high_resolution_clock::now();
 
-  torch::Tensor acceptance = sampler.kick(250, wavefuntion);
+  torch::Tensor acceptance = sampler.kick(500, wavefunction);
   stop = std::chrono::high_resolution_clock::now();
 
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
@@ -114,7 +113,7 @@ int main(int argc, char* argv[]) {
 
   start = std::chrono::high_resolution_clock::now();
 
-  acceptance = sampler.kick(250, wavefuntion);
+  acceptance = sampler.kick(500, wavefunction);
   stop = std::chrono::high_resolution_clock::now();
 
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
@@ -125,7 +124,7 @@ int main(int argc, char* argv[]) {
 
   NuclearHamiltonian h(options);
 
-  auto junk = h.energy(wavefuntion, sampler.sample_x());
+  auto junk = h.energy(wavefunction, sampler.sample_x());
 
 
   return 0;

@@ -23,15 +23,15 @@ std::vector<torch::Tensor> NuclearHamiltonian::compute_derivatives(
     torch::Tensor w_of_x = wavefunction(inputs);
 
     torch::Tensor v = torch::ones(inputs.sizes());
-    
+
     // Compute the gradients dw_dx:
     auto grad_output = torch::ones_like(w_of_x);
     std::cout << "w_of_x.sizes(): " << w_of_x.sizes() << std::endl;
     auto dw_dx = torch::autograd::grad(
-        {w_of_x}, 
-        {inputs}, 
-        /*grad_outputs=*/{grad_output}, 
-        /*retain_graph=*/true, 
+        {w_of_x},
+        {inputs},
+        /*grad_outputs=*/{grad_output},
+        /*retain_graph=*/true,
         /*create_graph=*/true
         )[0];
 
@@ -49,10 +49,10 @@ std::vector<torch::Tensor> NuclearHamiltonian::compute_derivatives(
             auto dw_dx_ij = dw_dx.index({Slice(), i_particle, j_dim});
             // std::cout << "dw_dx_ij.sizes(): " << dw_dx_ij.sizes() << std::endl;
             auto d2w_dx2_ij = torch::autograd::grad(
-                /*outputs=*/ {dw_dx_ij}, 
-                /*inputs=*/  {inputs}, 
-                /*grad_outputs=*/ {grad_output}, 
-                /*retain_graph=*/ true, 
+                /*outputs=*/ {dw_dx_ij},
+                /*inputs=*/  {inputs},
+                /*grad_outputs=*/ {grad_output},
+                /*retain_graph=*/ true,
                 /*create_graph=*/ true
                 )[0];
             auto this_grad_slice = d2w_dx2_ij.index({Slice(), i_particle, j_dim});
@@ -103,6 +103,12 @@ torch::Tensor NuclearHamiltonian::kinetic_energy_jf(torch::Tensor w_of_x, torch:
     auto ke_jf = (cfg.HBAR * cfg.HBAR / (2*cfg.M)) * torch::sum(torch::pow(internal_arg,2), {1,2});
 
     return ke_jf;
+}
+
+torch::Tensor NuclearHamiltonian::potential_energy(torch::Tensor inputs){
+    auto x_squared = torch::sum(torch::pow(inputs**2), {1, 2});
+    return x_squared;
+
 }
 
 /*

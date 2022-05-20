@@ -1,7 +1,7 @@
 {
     "sampler": {
-        "n_walkers" : 20,
-        "n_particles" : 4,
+        "n_walkers" : 5000,
+        "n_particles" : 32,
         "n_dim" : 3,
         "n_spin_up" : 2,
         "n_protons" : 1,
@@ -11,7 +11,7 @@
         "kick_std" : 0.0
     },
     "wavefunction": {
-        "spatial": {
+        "spatial_config": {
             "n_input" : 3,
             "n_output" : 32,
             "n_layers" : 4,
@@ -19,7 +19,7 @@
             "bias" : false,
             "residual" : false
         },
-        "correlator" : {
+        "correlator_config" : {
             "individual_config" : {
                 "n_input" : 3,
                 "n_output" : 32,

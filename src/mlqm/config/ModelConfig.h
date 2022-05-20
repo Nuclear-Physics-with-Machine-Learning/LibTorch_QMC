@@ -38,7 +38,7 @@ void to_json(json& j, const DeepSetsCorrelaterConfig& s);
 void from_json(const json& j, DeepSetsCorrelaterConfig& s);
 
 struct ManyBodyWavefunctionConfig{
-    DeepSetsCorrelaterConfig dsc_config;
+    DeepSetsCorrelaterConfig correlator_config;
     MLPConfig spatial_config;
 };
 

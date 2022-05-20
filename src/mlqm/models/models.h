@@ -8,10 +8,11 @@
  */
 
 #ifndef MLQM_MODELS
-#define MLQM_MODELS 
+#define MLQM_MODELS
 
 #include "MLP.h"
 #include "DeepSetsCorrelator.h"
+#include "ManyBodyWavefunction.h"
 
 // void init_models(pybind11::module m);
 

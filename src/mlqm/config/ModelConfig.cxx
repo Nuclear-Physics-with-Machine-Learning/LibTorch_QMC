@@ -11,7 +11,7 @@ void to_json(json& j, const MLPConfig& mlp){
         {"bias"                , mlp.bias},
         {"residual"            , mlp.residual}
     };
-}    
+}
 
 void from_json(const json& j, MLPConfig& mlp ){
 
@@ -30,7 +30,7 @@ void to_json(json& j, const DeepSetsCorrelaterConfig& d){
         {"confinement"       , d.confinement},
         {"latent_space"      , d.latent_space}
     };
-}    
+}
 
 void from_json(const json& j, DeepSetsCorrelaterConfig& s ){
 
@@ -43,12 +43,11 @@ void from_json(const json& j, DeepSetsCorrelaterConfig& s ){
 
 void to_json(json& j, const ManyBodyWavefunctionConfig& m){
     j = json{
-        {"dsc_config" ,    m.dsc_config},
-        {"spatial_config", m.spatial_config},
+        {"correlator_config" , m.correlator_config},
+        {"spatial_config",     m.spatial_config},
     };
 }
 void from_json(const json& j, ManyBodyWavefunctionConfig& m){
-    j.at("dsc_config").get_to(m.dsc_config);
+    j.at("correlator_config").get_to(m.correlator_config);
     j.at("spatial_config").get_to(m.spatial_config);
 }
-

@@ -16,7 +16,7 @@
 struct ManyBodyWavefunctionImpl : torch::nn::Module {
     ManyBodyWavefunctionImpl(ManyBodyWavefunctionConfig _cfg, torch::TensorOptions options, int64_t n_particles)
         : cfg(_cfg),
-          dsc(_cfg.dsc_config, options),
+          dsc(_cfg.correlator_config, options),
           opts(options)
     {
         register_module("dsc", dsc);

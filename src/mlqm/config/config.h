@@ -16,7 +16,7 @@
 
 struct Config{
     SamplerConfig sampler;
-    DeepSetsCorrelaterConfig wavefunction;
+    ManyBodyWavefunctionConfig wavefunction;
 };
 
 void to_json(json& j, const Config& s);
