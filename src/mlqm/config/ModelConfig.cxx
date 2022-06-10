@@ -45,9 +45,11 @@ void to_json(json& j, const ManyBodyWavefunctionConfig& m){
     j = json{
         {"correlator_config" , m.correlator_config},
         {"spatial_config",     m.spatial_config},
+        {"mean_subtract",      m.mean_subtract},
     };
 }
 void from_json(const json& j, ManyBodyWavefunctionConfig& m){
     j.at("correlator_config").get_to(m.correlator_config);
     j.at("spatial_config").get_to(m.spatial_config);
+    j.at("mean_subtract").get_to(m.mean_subtract);
 }

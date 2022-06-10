@@ -25,19 +25,19 @@ project(mlqm)
 set(CMAKE_PACKAGE_DIR "mlqm")
 
 
-
 include_directories("./")
 
-# IO needs HDF5:
+#Main dependency is torch:
 find_package(Torch REQUIRED)
 include_directories(${TORCH_INCLUDE_DIRS})
-message("TORCH FOUND: ${TORCH_FOUND}")
-message("TORCH_INCLUDE_DIRS: ${TORCH_INCLUDE_DIRS}")
-message("TORCH Libraries: ${TORCH_LIBRARIES}")
-message("TORCH FLAGS: ${TORCH_CXX_FLAGS}")
+# message("TORCH FOUND: ${TORCH_FOUND}")
+# message("TORCH_INCLUDE_DIRS: ${TORCH_INCLUDE_DIRS}")
+# message("TORCH Libraries: ${TORCH_LIBRARIES}")
+# message("TORCH FLAGS: ${TORCH_CXX_FLAGS}")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 
+# Try for OpenMP for task parallelization:
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
     MESSAGE(STATUS "OpenMP CXX Include directories ${OpenMP_CXX_INCLUDE_DIRS}")
@@ -49,36 +49,22 @@ if(OpenMP_CXX_FOUND)
     add_definitions(-DOPENMP_FOUND)
 endif()
 
-# This package needs numpy::
-
-# # Many packages need python:
-# find_package(PythonLibs REQUIRED)
-# include_directories(${PYTHON_INCLUDE_DIRS})
-
-
-
-# # This will come back for configuration:
+# Add the external folders for all the extras
+# (logging, tensorboard, tests, json)
 
 # Add the json library
 set(JSON_BuildTests OFF CACHE INTERNAL "")
-add_subdirectory(json)
-message("NLOHMANN_JSON_INCLUDE_INSTALL_DIR: ${NLOHMANN_JSON_INCLUDE_INSTALL_DIR}")
-include_directories(json/include)
-
+add_subdirectory("json")
+include_directories("json/include")
 
 # Here is the testing library:
 add_subdirectory("Catch2")
 
-# message("Adding pybind11")
-# find_package(pybind11 REQUIRED)
-# include_directories(${PYBIND11_INCLUDE_DIR})
+# Add the logging directory:
+add_subdirectory("plog")
+include_directories("plog/include")
 
-
-
-# # GIves bindings between json and python
-# add_subdirectory(pybind11_json)
-# include_directories(pybind11_json/include)
-
+# Add tensorboard:
 
 
 

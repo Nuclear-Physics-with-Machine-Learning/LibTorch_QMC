@@ -16,16 +16,20 @@ MetropolisSampler::MetropolisSampler(SamplerConfig _cfg, torch::TensorOptions op
 {
     // Initialize the tensor
 
-    this -> x       = torch::randn({cfg.n_walkers,cfg.n_particles,cfg.n_dim}, opts);
+    // We do an optimization to parallize observations
+    n_walkers_opt_shape = cfg.n_walkers * cfg.n_concurrent_obs_per_rank;
+
+
+    this -> x = torch::randn({n_walkers_opt_shape, cfg.n_particles, cfg.n_dim}, opts);
     if(_cfg.use_spin){
-        this -> spin    = -1. * torch::ones({cfg.n_walkers,cfg.n_particles}, opts); // spin either up/down
+        this -> spin    = -1. * torch::ones({n_walkers_opt_shape,cfg.n_particles}, opts); // spin either up/down
         // Set a fixed number to 1:
         for (int64_t i = 0; i < cfg.n_spin_up; i++){
             spin.index_put_({Slice{}, i},1.0);        
         }
     }
     if(_cfg.use_isospin){
-        this -> isospin = -1 * torch::ones({cfg.n_walkers,cfg.n_particles}, opts); // isospin either up/down
+        this -> isospin = -1 * torch::ones({n_walkers_opt_shape,cfg.n_particles}, opts); // isospin either up/down
         // Set a fixed number to 1:
         for (int64_t i = 0; i < cfg.n_protons; i++){
             isospin.index_put_({Slice{}, i},1.0);
@@ -34,7 +38,30 @@ MetropolisSampler::MetropolisSampler(SamplerConfig _cfg, torch::TensorOptions op
 
 }
 
+torch::Tensor MetropolisSampler::sample_x(){
+    x_history.push_back(torch::clone(x)); 
+    return torch::clone(x);
+}
+
+torch::Tensor MetropolisSampler::sample_spin(){
+    spin_history.push_back(torch::clone(spin));
+    return torch::clone(spin);
+}
+torch::Tensor MetropolisSampler::sample_isospin(){
+    isospin_history.push_back(torch::clone(isospin));
+    return torch::clone(isospin);
+}
+
+void MetropolisSampler::reset_history(){
+    x_history.clear(); 
+    spin_history.clear(); 
+    isospin_history.clear();
+}
+
+
 torch::Tensor MetropolisSampler::kick(int n_kicks, ManyBodyWavefunction wavefunction){
+
+    ///TODO Initialize spin with non-zero WF
 
     // Apply inference mode in this function
     c10::InferenceMode guard(true);
@@ -46,10 +73,12 @@ torch::Tensor MetropolisSampler::kick(int n_kicks, ManyBodyWavefunction wavefunc
     torch::Tensor current_wavefunction = wavefunction(x);
 
     // Generate a long set of random number from which we will pull:
-    torch::Tensor random_numbers = torch::rand({n_kicks, cfg.n_walkers}, opts);
+    torch::Tensor random_numbers = torch::rand({n_kicks, n_walkers_opt_shape}, opts);
 
     // Generate a long list of kicks:
-    torch::Tensor kicks = torch::randn({n_kicks, cfg.n_walkers,cfg.n_particles,cfg.n_dim}, opts);
+    torch::Tensor kicks = torch::randn({n_kicks, n_walkers_opt_shape,cfg.n_particles,cfg.n_dim}, opts);
+
+    kicks = cfg.kick_mean + cfg.kick_std * kicks;
 
     // Adding spin:
     //  A meaningful metropolis move is to pick a pair and exchange the spin
@@ -105,8 +134,6 @@ torch::Tensor MetropolisSampler::kick(int n_kicks, ManyBodyWavefunction wavefunc
     }
 
     acceptance /= n_kicks;
-
-    std::cout << "Kicking done!" << std::endl;
 
 
     return acceptance;

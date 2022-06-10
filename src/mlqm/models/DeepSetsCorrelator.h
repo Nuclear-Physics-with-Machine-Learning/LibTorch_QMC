@@ -16,16 +16,7 @@
 using namespace torch::indexing;
 
 struct DeepSetsCorrelatorImpl : torch::nn::Module {
-    DeepSetsCorrelatorImpl(DeepSetsCorrelaterConfig _cfg, torch::TensorOptions options):
-    cfg(_cfg),
-    individual_net(_cfg.individual_config, options),
-    aggregate_net(_cfg.aggregate_config, options),
-    opts(options)
-    {
-        register_module("individual_net", individual_net);
-        register_module("aggregate_net", aggregate_net);
-
-    }
+    DeepSetsCorrelatorImpl(DeepSetsCorrelaterConfig _cfg, torch::TensorOptions options);
 
     torch::Tensor forward(torch::Tensor x);
     

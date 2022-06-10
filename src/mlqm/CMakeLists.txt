@@ -2,6 +2,7 @@ add_subdirectory(config)
 add_subdirectory(models)
 add_subdirectory(sampler)
 add_subdirectory(hamiltonians)
+add_subdirectory(optimizers)
 
 
 # This is admittedly pretty clunky, but it gets the job done to make one object file:
@@ -11,7 +12,8 @@ add_library(libmlqm SHARED
     $<TARGET_OBJECTS:models>
     $<TARGET_OBJECTS:sampler>
     $<TARGET_OBJECTS:hamiltonians>
-    )
+    $<TARGET_OBJECTS:optimizers>
+)
 
 
 if(UNIX AND NOT APPLE)

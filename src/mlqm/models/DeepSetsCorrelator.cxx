@@ -4,14 +4,16 @@
 #include <omp.h>
 #endif
 
-// void init_DSC(pybind11::module m){
-//     using Class = DeepSetsCorrelatorImpl;
-//     pybind11::class_<Class> DSC(m, "DeepSetsCorrelator");
-//     DSC.def(pybind11::init<int64_t, int64_t>());
+DeepSetsCorrelatorImpl::DeepSetsCorrelatorImpl(DeepSetsCorrelaterConfig _cfg, torch::TensorOptions options):
+    cfg(_cfg),
+    individual_net(_cfg.individual_config, options),
+    aggregate_net(_cfg.aggregate_config, options),
+    opts(options)
+{
+    register_module("individual_net", individual_net);
+    register_module("aggregate_net", aggregate_net);
 
-//     DSC.def("forward",        &Class::forward);
-
-// }
+}
 
 torch::Tensor DeepSetsCorrelatorImpl::forward(torch::Tensor x){
 
@@ -47,6 +49,7 @@ torch::Tensor DeepSetsCorrelatorImpl::forward(torch::Tensor x){
     torch::Tensor exp = x.pow(2).sum({1,2});
     auto confinement = -cfg.confinement * exp;
 
-    return summed_output*confinement;
+
+    return torch::exp(summed_output + confinement);
 
 }

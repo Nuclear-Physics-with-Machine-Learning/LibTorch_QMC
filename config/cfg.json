@@ -1,43 +1,52 @@
 {
+    "hamiltonian": {
+        "M" : 1.0,
+        "HBAR" : 1.0
+    },
     "sampler": {
-        "n_walkers" : 5000,
-        "n_particles" : 32,
+        "n_walkers" : 5,
+        "n_particles" : 2,
         "n_dim" : 3,
         "n_spin_up" : 2,
         "n_protons" : 1,
         "use_spin" : true,
         "use_isospin" : true,
         "kick_mean" : 0.0,
-        "kick_std" : 0.0
+        "kick_std" : 0.5,
+        "n_thermalize": 100,
+        "n_void_steps": 200,
+        "n_observable_measurements": 1,
+        "n_concurrent_obs_per_rank": 1
     },
     "wavefunction": {
         "spatial_config": {
             "n_input" : 3,
-            "n_output" : 32,
-            "n_layers" : 4,
-            "n_filters_per_layer" : 32,
+            "n_output" : 8,
+            "n_layers" : 2,
+            "n_filters_per_layer" : 8,
             "bias" : false,
             "residual" : false
         },
         "correlator_config" : {
             "individual_config" : {
                 "n_input" : 3,
-                "n_output" : 32,
-                "n_layers" : 4,
-                "n_filters_per_layer" : 32,
+                "n_output" : 8,
+                "n_layers" : 2,
+                "n_filters_per_layer" : 8,
                 "bias" : false,
                 "residual" : false
             },
             "aggregate_config"  : {
-                "n_input" : 32,
+                "n_input" : 8,
                 "n_output" : 1,
-                "n_layers" : 4,
-                "n_filters_per_layer" : 32,
+                "n_layers" : 2,
+                "n_filters_per_layer" : 8,
                 "bias" : false,
                 "residual" : false
             },
             "confinement"       : 0.1,
-            "latent_space"      : 32
-        }
+            "latent_space"      : 8
+        },
+        "mean_subtract"     : true
     }
 }

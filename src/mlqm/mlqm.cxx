@@ -7,28 +7,41 @@
 #include "models/models.h"
 #include "sampler/sampler.h"
 #include "hamiltonians/NuclearHamiltonian.h"
+#include "optimizers/BaseOptimizer.h"
 
 
 
 int main(int argc, char* argv[]) {
 
+  /////////////////////////////////////////////
+  // Initialize the logger
+  /////////////////////////////////////////////
+  
+  // Create the 1st appender, this one goes to file.
+  static plog::RollingFileAppender<plog::CsvFormatter> 
+    fileAppender("process.csv", 8000, 3); 
+  // Create the 2nd appender, this one prints to console.
+  static plog::ConsoleAppender<plog::TxtFormatter> consoleAppender; 
+  // Initialize the logger with the both appenders.
+  plog::init(plog::debug, &fileAppender).addAppender(&consoleAppender); 
+
   // The only argument this program should accept is a json configuration file.
 
   if (argc == 1){
-    std::cout << "Must supply a configuration file on cmdline!  Exiting!" << std::endl;
+    PLOG_ERROR << "Must supply a configuration file on cmdline!  Exiting!";
     return 1;
   }
 
   // We load it directly with json:
   std::string fname(argv[argc - 1]);
 
-  std::cout << "config file is: " << fname << std::endl;
+  PLOG_INFO << "config file is: " << fname;
 
   // Read the configuration from file:
   std::ifstream ifs(fname);
 
   if (! ifs.good()){
-    std::cout << "ERROR!  configuration file does not exist." << std::endl;
+    PLOG_ERROR << "ERROR!  configuration file does not exist.";
     return 2;
   }
 
@@ -39,11 +52,11 @@ int main(int argc, char* argv[]) {
     j_cfg = json::parse(ifs);
   }
   catch (...){
-    std::cout << "ERROR!  json file might have an error." << std::endl;
+    PLOG_ERROR << "ERROR!  json file might have an error.";
   }
 
 
-  std::cout << "Config: " <<  j_cfg << std::endl;
+  PLOG_INFO << "Config: " <<  j_cfg.dump(2);
 
   // Convert the json object into a config object:
 
@@ -52,7 +65,7 @@ int main(int argc, char* argv[]) {
   // How many threads?
   // at::set_num_interop_threads(4);
   // at::set_num_threads(1);
-  // std::cout << "Using this many threads for interop: " <<  at::get_num_interop_threads() << std::endl;
+  // PLOG_INFO << "Using this many threads for interop: " <<  at::get_num_interop_threads();
 
 
   // Create default tensor options, passed for all tensor creation:
@@ -65,66 +78,14 @@ int main(int argc, char* argv[]) {
   // Default device?
   // torch::Device device(torch::kCPU);
   if (torch::cuda::is_available()) {
-    std::cout << "CUDA is available! Training on GPU." << std::endl;
+    PLOG_INFO << "CUDA is available! Training on GPU.";
     options = options.device(torch::kCUDA);
   }
 
-  std::cout << "Device selected: " << options.device() << std::endl;
-  std::cout << "Requires grad?: " << options.requires_grad() << std::endl;
+  PLOG_INFO << "Device selected: " << options.device();
 
-  // Turn off inference mode at the highest level
-  c10::InferenceMode guard(false);
-
-  // Create a sampler:
-  MetropolisSampler sampler(cfg.sampler, options);
-
-  // Create a model:
-  ManyBodyWavefunction wavefunction = ManyBodyWavefunction(cfg.wavefunction, options, cfg.sampler.n_particles);
-  wavefunction -> to(options.device());
-  wavefunction -> to(torch::kFloat64);
-
-
-  // // Initialize random input:
-  auto input = sampler.sample_x();
-
-  std::cout << "input.sizes(): "<< input.sizes() << std::endl;
-
-  auto w_of_x = wavefunction(input);
-
-  auto start = std::chrono::high_resolution_clock::now();
-  w_of_x = wavefunction(input);
-  auto stop = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-  std::cout << "Just WF time: " << (duration.count()) << " milliseconds" << std::endl;
-  std::cout << "w_of_x.sizes(): " << w_of_x.sizes() << std::endl;
-
-
-  // Run the model forward:
-
-  start = std::chrono::high_resolution_clock::now();
-
-  torch::Tensor acceptance = sampler.kick(500, wavefunction);
-  stop = std::chrono::high_resolution_clock::now();
-
-  duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-
-  std::cout << "acceptance : " << acceptance << std::endl;
-  std::cout << "Kick time: " << (duration.count() / 1000.) << " seconds" << std::endl;
-
-  start = std::chrono::high_resolution_clock::now();
-
-  acceptance = sampler.kick(500, wavefunction);
-  stop = std::chrono::high_resolution_clock::now();
-
-  duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-
-  std::cout << "acceptance : " << acceptance << std::endl;
-  std::cout << "Kick time: " << (duration.count() / 1000.) << " seconds" << std::endl;
-
-
-  NuclearHamiltonian h(options);
-
-  auto junk = h.energy(wavefunction, sampler.sample_x());
+  // Create the base algorithm:
+  BaseOptimizer optim(cfg, options); 
 
 
   return 0;

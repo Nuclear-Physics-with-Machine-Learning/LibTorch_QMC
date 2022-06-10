@@ -41,7 +41,10 @@ struct MLPImpl : torch::nn::Module {
             // Use the specified precision:
             // layer ->to(opts.dtype());
             layers->push_back(layer);
-            layers->push_back(torch::nn::Tanh());
+            // skip the activation on the last layer:
+            if (i != cfg.n_layers -1){
+                layers->push_back(torch::nn::Tanh());                
+            }
             in = out;
             if (i == cfg.n_layers - 2) out = cfg.n_output;
         }

@@ -1,12 +1,52 @@
 #include "NuclearHamiltonian.h"
 
 
+NuclearHamiltonian::NuclearHamiltonian(
+    NuclearHamiltonianConfig config, torch::TensorOptions options) : 
+    cfg(config)
+{_opts = options;}
+
 torch::Tensor NuclearHamiltonian::energy(
     ManyBodyWavefunction wavefunction,
-    torch::Tensor inputs)
+    torch::Tensor inputs, // torch::Tensor spin, torch::Tensor isospin
+    torch::Tensor & energy_jf, 
+    torch::Tensor & ke_jf, 
+    torch::Tensor & ke_direct, 
+    torch::Tensor & pe, 
+    torch::Tensor & w_of_x)
 {
-    auto junk = compute_derivatives(wavefunction, inputs);
-    return torch::Tensor();
+    // Get the necessary derivatives:
+    auto derivatives = compute_derivatives(wavefunction, inputs);
+
+    w_of_x                = derivatives[0];
+    torch::Tensor dw_dx   = derivatives[1];
+    torch::Tensor d2w_dx2 = derivatives[2];
+
+    // PLOG_INFO << "w_of_x.sizes() " << w_of_x.sizes();
+    // PLOG_INFO << "torch::mean(w_of_x) " << torch::mean(w_of_x);
+    // PLOG_INFO << "dw_dx.sizes() " << dw_dx.sizes();
+    // PLOG_INFO << "torch::mean(dw_dx) " << torch::mean(dw_dx);
+    // PLOG_INFO << "d2w_dx2.sizes() " << d2w_dx2.sizes();
+    // PLOG_INFO << "torch::mean(d2w_dx2) " << torch::mean(d2w_dx2);
+
+    // This function takes the inputs
+    // And computes the expectation value of the energy at each input point
+    pe        = potential_energy(inputs);
+    // PLOG_INFO << "pe.sizes() " << pe.sizes();
+    // PLOG_INFO << "torch::mean(pe) " << torch::mean(pe);
+    ke_jf     = kinetic_energy_jf(w_of_x, dw_dx);
+    // PLOG_INFO << "ke_jf.sizes() " << ke_jf.sizes();
+    // PLOG_INFO << "torch::mean(ke_jf) " << torch::mean(ke_jf);
+    ke_direct = kinetic_energy(w_of_x, d2w_dx2);
+    // PLOG_INFO << "ke_direct.sizes() " << ke_direct.sizes();
+    // PLOG_INFO << "torch::mean(ke_direct) " << torch::mean(ke_direct);
+
+
+    // Total energy computations:
+    torch::Tensor energy = pe + ke_direct;
+    energy_jf            = pe + ke_jf;
+
+    return energy;
 }
 
 
@@ -14,7 +54,6 @@ std::vector<torch::Tensor> NuclearHamiltonian::compute_derivatives(
     ManyBodyWavefunction wavefunction,
     torch::Tensor inputs)
 {
-
 
     // First, we set the inputs to tensors that require grad:
     inputs.requires_grad_(true);
@@ -26,7 +65,6 @@ std::vector<torch::Tensor> NuclearHamiltonian::compute_derivatives(
 
     // Compute the gradients dw_dx:
     auto grad_output = torch::ones_like(w_of_x);
-    std::cout << "w_of_x.sizes(): " << w_of_x.sizes() << std::endl;
     auto dw_dx = torch::autograd::grad(
         {w_of_x},
         {inputs},
@@ -37,9 +75,10 @@ std::vector<torch::Tensor> NuclearHamiltonian::compute_derivatives(
 
     // Now to compute the second derivatives.
 
-    int64_t n_walkers = inputs.sizes()[0];
+    // int64_t n_walkers = inputs.sizes()[0];
     int64_t n_particles = inputs.sizes()[1];
     int64_t n_dim = inputs.sizes()[2];
+
 
     torch::Tensor d2w_dx2 = torch::zeros_like(dw_dx, _opts);
 
@@ -65,30 +104,22 @@ std::vector<torch::Tensor> NuclearHamiltonian::compute_derivatives(
     val_and_grads.push_back(dw_dx);
     val_and_grads.push_back(d2w_dx2);
 
-
     return val_and_grads;
-
 
 }
 
 torch::Tensor NuclearHamiltonian::kinetic_energy(torch::Tensor w_of_x, torch::Tensor d2w_dx2){
 
     // We need to weigh with 1/w_of_x
-    auto inverse_w = 1./w_of_x;
+    auto inverse_w = torch::reshape(1./(w_of_x + 1e-8), {-1, 1});
 
     // Reduce the hessian but only over spatial dimensions:
     auto summed_d2 = torch::sum(d2w_dx2, {2,});
 
-        // inverse_w = tf.reshape(1/(w_of_x), (-1,1) )
-        // # Only reduce over the spatial dimension here:
-        // summed_d2 = tf.reduce_sum(d2w_dx2, axis=(2))
-
-
     // Compute the kinetic energy:
-    auto ke = -(cfg.HBAR * cfg.HBAR / (2*cfg.M)) * torch::sum(inverse_w * summed_d2, {1});
-        // ke = -(self.HBAR**2 / (2 * M)) * tf.reduce_sum(inverse_w * summed_d2, axis=1)
+    auto ke =  torch::sum(inverse_w * summed_d2, {1});
 
-    return ke;
+    return -(cfg.HBAR * cfg.HBAR / (2*cfg.M)) * ke;
 }
 
 torch::Tensor NuclearHamiltonian::kinetic_energy_jf(torch::Tensor w_of_x, torch::Tensor dw_dx){
@@ -96,71 +127,27 @@ torch::Tensor NuclearHamiltonian::kinetic_energy_jf(torch::Tensor w_of_x, torch:
     < x | KE | psi > / < x | psi > =  1 / 2m [ < x | p | psi > / < x | psi >  = 1/2 w * x**2
     */
 
+    auto reshaped = torch::reshape(w_of_x, {-1,1,1});
+    // PLOG_INFO << "reshaped: " << reshaped;
 
-    auto internal_arg = dw_dx / torch::reshape(w_of_x, {-1,1,1});
-
+    auto internal_arg = dw_dx / (reshaped + 1e-8);
+    // PLOG_INFO << "dw_dx: " << dw_dx;
+    // PLOG_INFO << "internal_arg: " << internal_arg;
+    // PLOG_INFO << "torch::pow(internal_arg, 2): " << torch::pow(internal_arg, 2);
     // Contract d2_w_dx over spatial dimensions and particles:
-    auto ke_jf = (cfg.HBAR * cfg.HBAR / (2*cfg.M)) * torch::sum(torch::pow(internal_arg,2), {1,2});
+    auto ke_jf = torch::sum(torch::pow(internal_arg,2), {1,2});
+    // PLOG_INFO << "ke_jf: " << ke_jf;
 
-    return ke_jf;
+    return (cfg.HBAR * cfg.HBAR / (2*cfg.M)) * ke_jf;
 }
 
 torch::Tensor NuclearHamiltonian::potential_energy(torch::Tensor inputs){
-    auto x_squared = torch::sum(torch::pow(inputs**2), {1, 2});
+    auto x_squared = torch::sum(torch::pow(inputs, 2), {1, 2});
     return x_squared;
 
 }
 
 /*
 
-    @tf.function
-    def kinetic_energy_jf(self, *, w_of_x: tf.Tensor, dw_dx: tf.Tensor, M):
-        """Return Kinetic energy
-
-        Calculate and return the KE directly
-
-        Otherwise, exception
-
-        Arguments:
-            dw_of_x/dx {tf.Tensor} -- Computed derivative of the wavefunction
-
-        Returns:
-            tf.Tensor - kinetic energy (JF) of shape [1]
-        """
-        # < x | KE | psi > / < x | psi > =  1 / 2m [ < x | p | psi > / < x | psi >  = 1/2 w * x**2
-
-
-
-        internal_arg = dw_dx / tf.reshape(w_of_x, (-1,1,1))
-
-        # Contract d2_w_dx over spatial dimensions and particles:
-        ke_jf = (self.HBAR**2 / (2 * M)) * tf.reduce_sum(internal_arg**2, axis=(1,2))
-
-
-        return ke_jf
-
-    @tf.function
-    def kinetic_energy(self, *, w_of_x : tf.Tensor, d2w_dx2 : tf.Tensor, M):
-        """Return Kinetic energy
-
-
-        If all arguments are supplied, calculate and return the KE.
-
-        Arguments:
-            d2w_dx2 {tf.Tensor} -- Computed second derivative of the wavefunction
-            KE_JF {tf.Tensor} -- JF computation of the kinetic energy
-
-        Returns:
-            tf.Tensor - potential energy of shape [1]
-        """
-
-
-        inverse_w = tf.reshape(1/(w_of_x), (-1,1) )
-        # Only reduce over the spatial dimension here:
-        summed_d2 = tf.reduce_sum(d2w_dx2, axis=(2))
-
-        ke = -(self.HBAR**2 / (2 * M)) * tf.reduce_sum(inverse_w * summed_d2, axis=1)
-
-        return ke
 
 */

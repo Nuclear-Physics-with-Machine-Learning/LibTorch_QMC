@@ -17,7 +17,7 @@
 class NuclearHamiltonian
 {
 public:
-    NuclearHamiltonian(torch::TensorOptions options){_opts = options;}
+    NuclearHamiltonian(NuclearHamiltonianConfig config, torch::TensorOptions options);
     ~NuclearHamiltonian(){}
 
 
@@ -29,7 +29,13 @@ public:
      *
      * @return     Tensor of per-configuration energy
      */
-    torch::Tensor energy(ManyBodyWavefunction wavefunction, torch::Tensor inputs);
+    torch::Tensor energy(ManyBodyWavefunction wavefunction, torch::Tensor inputs, 
+        torch::Tensor & energy_jf, 
+        torch::Tensor & ke_jf, 
+        torch::Tensor & ke_direct, 
+        torch::Tensor & pe, 
+        torch::Tensor & w_of_x
+        );
 
     /**
      * @brief      Compute the real kinetic energy

@@ -10,7 +10,11 @@ void to_json(json& j, const SamplerConfig& s){
         {"use_spin"    , s.use_spin},
         {"use_isospin" , s.use_isospin},
         {"kick_mean"   , s.kick_mean},
-        {"kick_std"    , s.kick_std}
+        {"kick_std"    , s.kick_std},
+        {"n_thermalize"  , s.n_thermalize},
+        {"n_void_steps"  , s.n_void_steps},
+        {"n_observable_measurements" , s.n_observable_measurements},
+        {"n_concurrent_obs_per_rank" , s.n_concurrent_obs_per_rank}
     };
 }    
 
@@ -25,4 +29,8 @@ void from_json(const json& j, SamplerConfig& s ){
     j.at("use_isospin").get_to(s.use_isospin);
     j.at("kick_mean").get_to(s.kick_mean);
     j.at("kick_std").get_to(s.kick_std);
+    j.at("n_thermalize").get_to( s.n_thermalize);
+    j.at("n_void_steps").get_to( s.n_void_steps);
+    j.at("n_observable_measurements").get_to(s.n_observable_measurements);
+    j.at("n_concurrent_obs_per_rank").get_to(s.n_concurrent_obs_per_rank);
 }

@@ -22,9 +22,11 @@ public:
 
     torch::Tensor kick(int n_kicks, ManyBodyWavefunction wavefunction);
 
-    torch::Tensor sample_x(){return torch::clone(x);}
-    torch::Tensor sample_spin(){return torch::clone(spin);}
-    torch::Tensor sample_isospin(){return torch::clone(isospin);}
+    torch::Tensor sample_x();
+    torch::Tensor sample_spin();
+    torch::Tensor sample_isospin();
+
+    void reset_history();
 
 private:
 
@@ -33,6 +35,10 @@ private:
     torch::Tensor spin;
     torch::Tensor isospin;
 
+    std::vector<torch::Tensor> x_history;
+    std::vector<torch::Tensor> spin_history;
+    std::vector<torch::Tensor> isospin_history;
+
     SamplerConfig cfg;
 
     torch::TensorOptions opts;
@@ -40,5 +46,7 @@ private:
     void init_possilble_swaps();
 
     std::vector<std::pair<int64_t, int64_t>> possible_swaps;
+
+    int64_t n_walkers_opt_shape;
 
 };

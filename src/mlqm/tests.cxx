@@ -8,7 +8,11 @@
 #include "hamiltonians/NuclearHamiltonian.h"
 
 static auto default_config = R"(
-{
+{   
+    "hamiltonian": {
+        "M" : 1.0,
+        "HBAR" : 1.0
+    },
     "sampler": {
         "n_walkers" : 10,
         "n_particles" : 16,
@@ -105,7 +109,7 @@ TEST_CASE( "Differentiation matches numerical approximations", "[wavefunction]")
     // Create a sampler:
     MetropolisSampler sampler(cfg.sampler, options);
 
-    NuclearHamiltonian h(options);
+    NuclearHamiltonian h(cfg.hamiltonian, options);
 
 
     ManyBodyWavefunction wavefunction = ManyBodyWavefunction(cfg.wavefunction, options, cfg.sampler.n_particles);

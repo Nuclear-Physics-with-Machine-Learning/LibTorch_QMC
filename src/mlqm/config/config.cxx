@@ -2,15 +2,17 @@
 
 
 
-void to_json(json& j, const Config& mlp){
+void to_json(json& j, const Config& cfg){
     j = json{
-        {"sampler"     , mlp.sampler},
-        {"wavefunction", mlp.wavefunction},
+        {"sampler"     , cfg.sampler},
+        {"wavefunction", cfg.wavefunction},
+        {"hamiltonian", cfg.hamiltonian},
     };
 }    
 
-void from_json(const json& j, Config& mlp ){
+void from_json(const json& j, Config& cfg ){
 
-    j.at("sampler").get_to(mlp.sampler);
-    j.at("wavefunction").get_to(mlp.wavefunction);
+    j.at("sampler").get_to(cfg.sampler);
+    j.at("wavefunction").get_to(cfg.wavefunction);
+    j.at("hamiltonian").get_to(cfg.hamiltonian);
 }

@@ -4,3 +4,9 @@
 [submodule "src/Catch2"]
 	path = src/Catch2
 	url = https://github.com/catchorg/Catch2.git
+[submodule "src/plog"]
+	path = src/plog
+	url = https://github.com/SergiusTheBest/plog.git
+[submodule "src/tensorboard_logger"]
+	path = src/tensorboard_logger
+	url = https://github.com/RustingSword/tensorboard_logger.git

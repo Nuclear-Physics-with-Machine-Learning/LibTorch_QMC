@@ -12,6 +12,12 @@
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
 
+// We include the logger here because config.h gets included everywhere
+#define PLOG_OMIT_LOG_DEFINES
+#include <plog/Log.h> // Step1: include the headers
+#include "plog/Initializers/RollingFileInitializer.h"
+#include "plog/Appenders/ConsoleAppender.h"
+
 
 struct SamplerConfig{
     int n_walkers;
@@ -23,6 +29,10 @@ struct SamplerConfig{
     bool use_isospin;
     float kick_mean;
     float kick_std;
+    int n_thermalize;
+    int n_void_steps;
+    int n_observable_measurements;
+    int n_concurrent_obs_per_rank;
 
     // SamplerConfig() :  
     //     n_walkers(10000),

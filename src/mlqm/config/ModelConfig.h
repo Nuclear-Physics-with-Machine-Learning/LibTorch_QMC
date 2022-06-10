@@ -12,6 +12,13 @@
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
 
+// We include the logger here because config.h gets included everywhere
+#define PLOG_OMIT_LOG_DEFINES
+#include <plog/Log.h> // Step1: include the headers
+#include "plog/Initializers/RollingFileInitializer.h"
+#include "plog/Appenders/ConsoleAppender.h"
+
+
 
 struct MLPConfig{
     int n_input;
@@ -40,6 +47,7 @@ void from_json(const json& j, DeepSetsCorrelaterConfig& s);
 struct ManyBodyWavefunctionConfig{
     DeepSetsCorrelaterConfig correlator_config;
     MLPConfig spatial_config;
+    bool mean_subtract;
 };
 
 void to_json(json& j, const ManyBodyWavefunctionConfig& s);
