@@ -16,6 +16,7 @@
 #include "mlqm/config/config.h"
 
 #include "Accumulator.h"
+#include "GradientCalculator.h"
 
 class BaseOptimizer
 {
@@ -45,13 +46,38 @@ public:
      */
     torch::Tensor equilibrate(int64_t n_iterations);
 
-
+    /**
+     * @brief      Recompute the energy
+     *
+     * @param[in]  test_wf         The test wf
+     * @param[in]  current_w_of_x  The current w of x
+     *
+     * @return     { description_of_the_return_value }
+     */
     std::vector<torch::Tensor> recompute_energy(ManyBodyWavefunction test_wf, torch::Tensor current_w_of_x);
 
-    std::vector<torch::Tensor> compute_gradients();
+    /**
+     * @brief      Calculates the gradients.
+     *
+     * @param[in]  dpsi_i     The dpsi i
+     * @param[in]  energy     The energy
+     * @param[in]  dpsi_i_EL  The dpsi i el
+     * @param[in]  dpsi_ij    The dpsi ij
+     * @param[in]  torch      The torch
+     *
+     * @return     The gradients.
+     */
+    torch::Tensor compute_gradients(
+        torch::Tensor dpsi_i,
+        torch::Tensor energy,
+        torch::Tensor dpsi_i_EL,
+        torch::Tensor dpsi_ij,
+        torch::Tensor eps,
+        torch::Tensor & S_ij);
 
     std::vector<torch::Tensor> walk_and_accumulate_observables();
-    void compute_updates_and_metrics();
+    
+    std::map<std::string, torch::Tensor> compute_updates_and_metrics(torch::Tensor & gradients);
     void unflatten_weights_or_gradients();
 
     std::map<std::string, torch::Tensor> sr_step();
@@ -76,6 +102,9 @@ private:
     // The hamiltonian class
     NuclearHamiltonian hamiltonian;
 
+    // Tool for gradient calculations
+    GradientCalculator grad_calc;
+
     // Way to accumlate and all reduce objects:
     Accumulator estimator;
  
@@ -98,6 +127,8 @@ private:
 
     // Objects that are useful to have stored:
     int n_loops_total;
+
+
 };
 
 

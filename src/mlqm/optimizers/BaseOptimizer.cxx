@@ -5,7 +5,8 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     : config(cfg),
       options(opts),
       sampler(cfg.sampler, opts),
-      hamiltonian(cfg.hamiltonian, opts)
+      hamiltonian(cfg.hamiltonian, opts),
+      grad_calc(opts)
 {
 
     size = 1;
@@ -379,7 +380,7 @@ std::map<std::string, torch::Tensor> BaseOptimizer::sr_step(){
     metrics["energy/ke_direct"]  = estimator["ke_direct"];
     metrics["energy/pe"]         = estimator["pe"];
 
-    PLOG_INFO << "Metrics set"
+    PLOG_INFO << "Metrics set";
 
 
     // Here, we call the function to optimize eps and compute the gradients:
@@ -390,12 +391,13 @@ std::map<std::string, torch::Tensor> BaseOptimizer::sr_step(){
 
     ///TODO: HERE
     // metrics.update(opt_metrics)
-
     // # Compute the ratio of the previous energy and the current energy
-    auto energy_diff = predicted_energy - estimator["energy"];
-
-    metrics["energy/energy_diff"] = energy_diff;
-        // # dp_i, opt_metrics = self.gradient_calc.sr(
+    // auto energy_diff = predicted_energy - estimator["energy"];
+    // metrics["energy/energy_diff"] = energy_diff;
+        
+    torch::Tensor gradients;
+    auto opt_metrics = compute_updates_and_metrics(gradients);
+        // # dp_i, opt_metrics = self.grad_calc.sr(
         // #     self.estimator["energy"],
         // #     self.estimator["dpsi_i"],
         // #     self.estimator["dpsi_i_EL"],
@@ -413,6 +415,47 @@ std::map<std::string, torch::Tensor> BaseOptimizer::sr_step(){
     predicted_energy = next_energy;
 
     return  metrics;
+
+}
+
+
+torch::Tensor BaseOptimizer::compute_gradients(
+    torch::Tensor dpsi_i,
+    torch::Tensor energy,
+    torch::Tensor dpsi_i_EL,
+    torch::Tensor dpsi_ij,
+    torch::Tensor eps,
+    torch::Tensor & S_ij){
+
+
+    // Get the natural gradients and S_ij
+    auto f_i = grad_calc.f_i(dpsi_i, energy, dpsi_i_EL);
+
+    S_ij = grad_calc.S_ij(dpsi_ij, dpsi_i);
+
+    // Regularize S_ij with as small and eps as possible:
+
+    auto dp_i = grad_calc.pd_solve(S_ij, eps, f_i);
+
+    // for (int i_trial = 0; i_trial < 5; ++i_trial)
+    // {
+        
+    // }
+    //     try:
+            
+    //         break
+    //     except tf.errors.InvalidArgumentError:
+    //         logger.debug("Cholesky solve failed, continuing with higher regularization")
+    //         eps *= 2.
+    //     continue
+
+    return dp_i;
+}
+
+std::map<std::string, torch::Tensor> BaseOptimizer::compute_updates_and_metrics(torch::Tensor & gradients){
+
+    std::map<std::string, torch::Tensor> opt_metrics;
+    return opt_metrics;
 
 }
 
