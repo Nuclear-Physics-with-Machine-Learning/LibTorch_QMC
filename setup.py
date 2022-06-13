@@ -9,11 +9,11 @@ import subprocess
 def main():
     # What's the absolute location of this file?
     repo_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__)))
-    
+
 
     build_dir = repo_dir / pathlib.Path("build/")
     src_dir   = repo_dir / pathlib.Path("src/")
-    
+
     # Create the build dir if needed:
     build_dir.mkdir(exist_ok=True)
 
@@ -30,7 +30,7 @@ def run_build(_build_dir):
     command += ['-j', str(16)]
 
     proc = subprocess.Popen(
-        command, 
+        command,
         cwd    = _build_dir,
         stdout = subprocess.PIPE,
         stderr = subprocess.STDOUT
@@ -52,12 +52,19 @@ def run_cmake(src_dir, _build_dir):
 
     # First, we check on some imports
 
-    import torch
+    try:
+        import torch
 
-    cmake_prefix = torch.utils.cmake_prefix_path
+        cmake_prefix = torch.utils.cmake_prefix_path
+    except:
+        print("Failed to import torch, looking for LibTorch on ENV.")
+        print("Please set LIB_TORCH to the cmake path of libtorch")
 
-
-
+    try:
+        cmake_prefix = os.environ['LIB_TORCH']
+    except:
+        print("Could not find libtorch, aborting.")
+        raise Exception()
 
     command = ['cmake']
     command += [f'-DCMAKE_PREFIX_PATH={cmake_prefix}']
@@ -65,7 +72,7 @@ def run_cmake(src_dir, _build_dir):
     command += [str(src_dir)]
 
     proc = subprocess.Popen(
-        command, 
+        command,
         cwd    = _build_dir,
         stdout = subprocess.PIPE,
         stderr = subprocess.STDOUT

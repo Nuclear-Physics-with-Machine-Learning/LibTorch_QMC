@@ -1,5 +1,10 @@
 #include "BaseOptimizer.h"
 
+#include <chrono>
+
+#ifdef OPENMP_FOUND
+#include <omp.h>
+#endif
 
 BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     : config(cfg),
@@ -14,7 +19,11 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     // Turn off inference mode at the highest level
     c10::InferenceMode guard(false);
 
-
+// 
+// #ifdef OPENMP_FOUND
+//     omp_set_num_threads(32);
+//     PLOG_INFO << "Using omp threads: " << omp_get_num_threads();
+// #endif
     /*
     We need to know how many times to loop over the walkers and metropolis step.
     The total number of observations is set: config.sampler.n_observable_measurements
@@ -24,7 +33,7 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
 
     */
 
-    n_loops_total = int(config.sampler.n_observable_measurements / 
+    n_loops_total = int(config.sampler.n_observable_measurements /
             config.sampler.n_concurrent_obs_per_rank);
 
     if (MPI_AVAILABLE){
@@ -78,9 +87,15 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     auto acceptance = equilibrate(cfg.sampler.n_thermalize);
     PLOG_INFO << "Done initial equilibration, acceptance = " << acceptance;
 
-
     auto metrics = sr_step();
 
+    for (int64_t i = 0; i < 10; i ++){
+        auto start = std::chrono::high_resolution_clock::now();
+        metrics = sr_step();
+        auto stop = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli>  duration = stop - start;
+        PLOG_INFO << "Duration: " << duration.count() << "[ms]";
+    }
     PLOG_INFO << metrics;
 
     // PLOG_DEBUG << jac;
@@ -134,7 +149,7 @@ torch::Tensor BaseOptimizer::jacobian(torch::Tensor x_current, ManyBodyWavefunct
 
     auto jacobian_flat = torch::zeros({n_walkers, n_parameters}, options);
 
-
+    #pragma omp parallel for
     for (int64_t i_walker = 0; i_walker < n_walkers; ++i_walker){
 
         // Compute the gradients:
@@ -162,8 +177,8 @@ torch::Tensor BaseOptimizer::jacobian(torch::Tensor x_current, ManyBodyWavefunct
 }
 
 std::vector<torch::Tensor> BaseOptimizer::compute_O_observables(
-    torch::Tensor flattened_jacobian, 
-    torch::Tensor energy, 
+    torch::Tensor flattened_jacobian,
+    torch::Tensor energy,
     torch::Tensor w_of_x)
 {
 
@@ -215,18 +230,18 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
 
     // Loop over observations:
     for (int i_loop = 0; i_loop < n_loops_total; ++i_loop)
-    { 
+    {
         // First do a void walk to thermalize after a new configuration.
         // By default, this will use the previous walkers as a starting configurations.
-        // #   This one does all the kicks in a compiled function.        
+        // #   This one does all the kicks in a compiled function.
         auto acceptance = equilibrate(config.sampler.n_void_steps);
-        
+
 
         // Get the current walker locations:
-        auto x_current = sampler.sample_x(); 
+        auto x_current = sampler.sample_x();
         auto spin      = sampler.sample_spin();
         auto isospin   = sampler.sample_isospin();
-           
+
         // Compute the observables:
         // Here, perhaps we can compute the d_i of obs_energy:
         torch::Tensor energy_jf, ke_jf, ke_direct, pe, w_of_x;
@@ -251,7 +266,7 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
 
         auto r = torch::sum(torch::pow(x_current,2.), {1,2});
         r = torch::mean(torch::sqrt(r));
-        // Here, we split the energy and other objects into 
+        // Here, we split the energy and other objects into
         // sizes of nwalkers_per_observation
         // if config.sampler.n_concurrent_obs_per_rank != 1:
         // Split walkers:
@@ -264,7 +279,7 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
         }
 
 
-          
+
         // Split observables:
         auto energy_v     = torch::chunk(energy,    config.sampler.n_concurrent_obs_per_rank, 0);
         auto energy_jf_v  = torch::chunk(energy_jf, config.sampler.n_concurrent_obs_per_rank, 0);
@@ -321,7 +336,7 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
             estimator.accumulate("weight",     torch::ones(1));
 
         }
-    } 
+    }
 
     // INTERCEPT HERE with MPI to allreduce the estimator objects.
     if (MPI_AVAILABLE) {
@@ -341,22 +356,22 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
 
 std::map<std::string, torch::Tensor> BaseOptimizer::sr_step(){
     std::map<std::string, torch::Tensor> metrics = {};
-    
+
     // self.latest_gradients = None
     // self.latest_psi       = None
 
- 
+
 
     // We do a thermalization step again:
     equilibrate(config.sampler.n_thermalize);
-        
+
     // Clear the walker history:
     sampler.reset_history();
 
 
     // Now, actually apply the loop and compute the observables:
     std::vector<torch::Tensor> current_psi = walk_and_accumulate_observables();
-    
+
     // At this point, we need to average the observables that feed into the optimizer:
     estimator.finalize(config.sampler.n_observable_measurements);
 
@@ -394,7 +409,7 @@ std::map<std::string, torch::Tensor> BaseOptimizer::sr_step(){
     // # Compute the ratio of the previous energy and the current energy
     // auto energy_diff = predicted_energy - estimator["energy"];
     // metrics["energy/energy_diff"] = energy_diff;
-        
+
     torch::Tensor gradients;
     auto opt_metrics = compute_updates_and_metrics(gradients);
         // # dp_i, opt_metrics = self.grad_calc.sr(
@@ -439,10 +454,10 @@ torch::Tensor BaseOptimizer::compute_gradients(
 
     // for (int i_trial = 0; i_trial < 5; ++i_trial)
     // {
-        
+
     // }
     //     try:
-            
+
     //         break
     //     except tf.errors.InvalidArgumentError:
     //         logger.debug("Cholesky solve failed, continuing with higher regularization")
@@ -458,24 +473,3 @@ std::map<std::string, torch::Tensor> BaseOptimizer::compute_updates_and_metrics(
     return opt_metrics;
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

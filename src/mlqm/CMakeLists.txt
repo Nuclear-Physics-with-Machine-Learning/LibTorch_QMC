@@ -17,11 +17,11 @@ add_library(libmlqm SHARED
 
 
 if(UNIX AND NOT APPLE)
-    set_target_properties(libmlqm PROPERTIES 
+    set_target_properties(libmlqm PROPERTIES
         INSTALL_RPATH "$ORIGIN/../lib/"
         IMPORTED_LOCATION "$ORIGIN/../lib/")
 elseif(APPLE)
-    set_target_properties(libmlqm PROPERTIES 
+    set_target_properties(libmlqm PROPERTIES
         INSTALL_RPATH "@loader_path/../lib/"
         IMPORTED_LOCATION "@loader_path/../lib/")
 endif()
@@ -83,7 +83,7 @@ target_link_libraries(libmlqm nlohmann_json::nlohmann_json)
 
 add_executable(mlqm mlqm.cxx)
 
-# Link the mlqm executable against 
+# Link the mlqm executable against
 target_link_libraries(mlqm libmlqm)
 
 
@@ -104,10 +104,10 @@ install(TARGETS mlqm
     )
 
 # Add a test executable:
-add_executable(tests tests.cxx)
-target_link_libraries(tests PRIVATE Catch2::Catch2WithMain libmlqm)
+# add_executable(tests tests.cxx)
+# target_link_libraries(tests PRIVATE Catch2::Catch2WithMain libmlqm)
 
-# # This is from the docs ... 
+# # This is from the docs ...
 # # These tests need their own main
 # add_executable(custom-main-tests test.cpp test-main.cpp)
 # target_link_libraries(custom-main-tests PRIVATE Catch2::Catch2)

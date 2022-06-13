@@ -30,10 +30,10 @@ include_directories("./")
 #Main dependency is torch:
 find_package(Torch REQUIRED)
 include_directories(${TORCH_INCLUDE_DIRS})
-# message("TORCH FOUND: ${TORCH_FOUND}")
-# message("TORCH_INCLUDE_DIRS: ${TORCH_INCLUDE_DIRS}")
-# message("TORCH Libraries: ${TORCH_LIBRARIES}")
-# message("TORCH FLAGS: ${TORCH_CXX_FLAGS}")
+message("TORCH FOUND: ${TORCH_FOUND}")
+message("TORCH_INCLUDE_DIRS: ${TORCH_INCLUDE_DIRS}")
+message("TORCH Libraries: ${TORCH_LIBRARIES}")
+message("TORCH FLAGS: ${TORCH_CXX_FLAGS}")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 

@@ -16,14 +16,14 @@ int main(int argc, char* argv[]) {
   /////////////////////////////////////////////
   // Initialize the logger
   /////////////////////////////////////////////
-  
+
   // Create the 1st appender, this one goes to file.
-  static plog::RollingFileAppender<plog::CsvFormatter> 
-    fileAppender("process.csv", 8000, 3); 
+  static plog::RollingFileAppender<plog::CsvFormatter>
+    fileAppender("process.csv", 8000, 3);
   // Create the 2nd appender, this one prints to console.
-  static plog::ConsoleAppender<plog::TxtFormatter> consoleAppender; 
+  static plog::ConsoleAppender<plog::TxtFormatter> consoleAppender;
   // Initialize the logger with the both appenders.
-  plog::init(plog::debug, &fileAppender).addAppender(&consoleAppender); 
+  plog::init(plog::debug, &fileAppender).addAppender(&consoleAppender);
 
   // The only argument this program should accept is a json configuration file.
 
@@ -62,11 +62,6 @@ int main(int argc, char* argv[]) {
 
   Config cfg = j_cfg.get<Config>();
 
-  // How many threads?
-  // at::set_num_interop_threads(4);
-  // at::set_num_threads(1);
-  // PLOG_INFO << "Using this many threads for interop: " <<  at::get_num_interop_threads();
-
 
   // Create default tensor options, passed for all tensor creation:
 
@@ -85,7 +80,7 @@ int main(int argc, char* argv[]) {
   PLOG_INFO << "Device selected: " << options.device();
 
   // Create the base algorithm:
-  BaseOptimizer optim(cfg, options); 
+  BaseOptimizer optim(cfg, options);
 
 
   return 0;
