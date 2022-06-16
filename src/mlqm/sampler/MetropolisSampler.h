@@ -26,6 +26,10 @@ public:
     torch::Tensor sample_spin();
     torch::Tensor sample_isospin();
 
+    std::vector<torch::Tensor> x_history(){ return stored_x_history;}
+    std::vector<torch::Tensor> spin_history(){ return stored_spin_history;}
+    std::vector<torch::Tensor> isospin_history(){ return stored_isospin_history;}
+
     void reset_history();
 
 private:
@@ -35,9 +39,9 @@ private:
     torch::Tensor spin;
     torch::Tensor isospin;
 
-    std::vector<torch::Tensor> x_history;
-    std::vector<torch::Tensor> spin_history;
-    std::vector<torch::Tensor> isospin_history;
+    std::vector<torch::Tensor> stored_x_history;
+    std::vector<torch::Tensor> stored_spin_history;
+    std::vector<torch::Tensor> stored_isospin_history;
 
     SamplerConfig cfg;
 

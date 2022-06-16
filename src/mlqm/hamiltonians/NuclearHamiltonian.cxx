@@ -61,6 +61,7 @@ std::vector<torch::Tensor> NuclearHamiltonian::compute_derivatives(
     // Now, compute the value of the wavefunction:
     torch::Tensor w_of_x = wavefunction(inputs);
 
+
     torch::Tensor v = torch::ones(inputs.sizes());
 
     // Compute the gradients dw_dx:
@@ -142,7 +143,7 @@ torch::Tensor NuclearHamiltonian::kinetic_energy_jf(torch::Tensor w_of_x, torch:
 }
 
 torch::Tensor NuclearHamiltonian::potential_energy(torch::Tensor inputs){
-    auto x_squared = torch::sum(torch::pow(inputs, 2), {1, 2});
+    auto x_squared = 0.5 * cfg.M * cfg.OMEGA*cfg.OMEGA * torch::sum(torch::pow(inputs, 2.), {1, 2});
     return x_squared;
 
 }

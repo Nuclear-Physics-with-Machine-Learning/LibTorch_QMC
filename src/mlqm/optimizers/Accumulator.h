@@ -22,7 +22,7 @@ public:
     
     void accumulate(const std::string& key, torch::Tensor value);
 
-    void finalize(double weight);
+    void finalize(torch::Tensor weight);
 
     void allreduce();
 

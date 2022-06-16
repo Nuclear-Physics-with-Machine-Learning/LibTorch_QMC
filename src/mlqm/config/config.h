@@ -18,6 +18,8 @@ struct Config{
     SamplerConfig sampler;
     ManyBodyWavefunctionConfig wavefunction;
     NuclearHamiltonianConfig hamiltonian;
+    float delta;
+    float epsilon;
 };
 
 void to_json(json& j, const Config& s);

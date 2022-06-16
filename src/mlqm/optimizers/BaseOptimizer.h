@@ -34,6 +34,15 @@ public:
      */
     torch::Tensor jacobian(torch::Tensor x_current, ManyBodyWavefunction wavefunction);
 
+    /**
+     * @brief      Calculates the O observables. (dpsi_i, dpsi_ij, dpsi_i_EL)
+     *
+     * @param[in]  flattened_jacobian  The flattened jacobian
+     * @param[in]  energy              The energy
+     * @param[in]  w_of_x              The w of x
+     *
+     * @return     The o observables.
+     */
     std::vector<torch::Tensor> compute_O_observables(
         torch::Tensor flattened_jacobian, 
         torch::Tensor energy, 
@@ -54,7 +63,9 @@ public:
      *
      * @return     { description_of_the_return_value }
      */
-    std::vector<torch::Tensor> recompute_energy(ManyBodyWavefunction test_wf, torch::Tensor current_w_of_x);
+    torch::Tensor recompute_energy(
+        ManyBodyWavefunction test_wf, std::vector<torch::Tensor> current_w_of_x,
+        torch::Tensor & overlap, torch::Tensor & acos);
 
     /**
      * @brief      Calculates the gradients.
@@ -75,12 +86,59 @@ public:
         torch::Tensor eps,
         torch::Tensor & S_ij);
 
+    /**
+     * @brief      Compute the next energy and optimization metrics
+     *
+     * @param[in]  current_psi  The current psi
+     * @param      gradients    The gradients
+     * @param      next_energy  The next energy
+     *
+     * @return     optimiziation metrics
+     */
+    std::map<std::string, torch::Tensor> flat_optimizer(
+        std::vector<torch::Tensor> current_psi, 
+        std::vector<torch::Tensor> & gradients, 
+        torch::Tensor & next_energy);
+
+
+    /**
+     * @brief      Main loop implementation per iteration
+     *
+     * @return     Returns tensor of current_psi values for each observation step
+     */
     std::vector<torch::Tensor> walk_and_accumulate_observables();
     
-    std::map<std::string, torch::Tensor> compute_updates_and_metrics(torch::Tensor & gradients);
-    void unflatten_weights_or_gradients();
+    /**
+     * @brief      Calculates the updates and metrics.
+     *
+     * @param[in]  current_psi  The current psi
+     * @param      gradients    The gradients
+     * @param      next_energy  The next energy
+     *
+     * @return     The metrics.
+     */
+    std::map<std::string, torch::Tensor> compute_updates_and_metrics(
+        std::vector<torch::Tensor> current_psi, 
+        std::vector<torch::Tensor> & gradients, 
+        torch::Tensor & next_energy);
 
+    /**
+     * @brief      Divide and reshape the weights/gradients to match the model.
+     *
+     * @param[in]  flat_gradients  The flat gradients
+     *
+     * @return     { description_of_the_return_value }
+     */
+    std::vector<torch::Tensor> unflatten_weights_or_gradients(torch::Tensor flat_gradients);
+
+    /**
+     * @brief      Run the single iteration of Stochastic Reconfiguration
+     *
+     * @return     returns the dictionary of metric values
+     */
     std::map<std::string, torch::Tensor> sr_step();
+
+    void apply_gradients(const std::vector<torch::Tensor> & gradients);
 
 private:
 
@@ -106,7 +164,7 @@ private:
     GradientCalculator grad_calc;
 
     // Way to accumlate and all reduce objects:
-    Accumulator estimator;
+    Accumulator estimator, re_estimator;
  
     // Global MPI size
     int size;

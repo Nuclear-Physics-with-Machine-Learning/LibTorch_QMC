@@ -1,6 +1,9 @@
 #include "Accumulator.h"
 
 void Accumulator::accumulate(const std::string& key, torch::Tensor value){
+    
+    // No gradients of accumulated variables, set inference mode
+    c10::InferenceMode guard(true);
     if(this -> find(key) == this -> end()){
         this ->operator[](key) = value;
     }
@@ -9,8 +12,21 @@ void Accumulator::accumulate(const std::string& key, torch::Tensor value){
     }
 }
 
-void Accumulator::finalize(double weight){
+void Accumulator::finalize(torch::Tensor weight){
     
+    // No gradients of accumulated variables, set inference mode
+    c10::InferenceMode guard(true);
+
+    map<std::string, torch::Tensor>::iterator it;
+    for (it = this->begin(); it != this -> end(); it ++){
+        if (it->first == "weight"){continue;}
+        else{
+            it -> second /= weight;
+        }
+    }
+
+    return;
+
 }
 
 void Accumulator::allreduce(){

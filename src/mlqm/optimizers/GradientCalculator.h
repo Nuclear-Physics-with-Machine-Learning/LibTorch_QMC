@@ -6,6 +6,13 @@
 
 #include <torch/torch.h>
 
+// We include the logger here because config.h gets included everywhere
+#define PLOG_OMIT_LOG_DEFINES
+#include <plog/Log.h> // Step1: include the headers
+#include "plog/Initializers/RollingFileInitializer.h"
+#include "plog/Appenders/ConsoleAppender.h"
+
+
 class GradientCalculator
 {
 public:

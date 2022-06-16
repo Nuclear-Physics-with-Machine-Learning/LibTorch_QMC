@@ -23,6 +23,7 @@ using json = nlohmann::json;
 struct NuclearHamiltonianConfig{
     float  M;
     float  HBAR;
+    float  OMEGA;
 
 };
 

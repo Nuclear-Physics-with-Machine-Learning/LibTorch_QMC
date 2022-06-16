@@ -40,11 +40,13 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
         n_loops_total = int(n_loops_total / size);
     }
 
-    PLOG_DEBUG << " -- Coordinating loop length";
+    predicted_energy = torch::full({}, 0.0, options);
+
 
 
     // We do a check that n_loops_total * n_concurrent_obs_per_rank matches expectations:
-    if (n_loops_total * config.sampler.n_concurrent_obs_per_rank*size != config.sampler.n_observable_measurements){
+    if (n_loops_total * config.sampler.n_concurrent_obs_per_rank*size 
+            != config.sampler.n_observable_measurements){
         std::stringstream exception_str;
         exception_str << "Total number of observations to compute is unexpected!\n";
         exception_str << "  Expected to have " << config.sampler.n_observable_measurements << ", have:\n";
@@ -61,6 +63,11 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     wavefunction -> to(options.device());
     wavefunction -> to(torch::kFloat64);
 
+    adaptive_wavefunction = ManyBodyWavefunction(cfg.wavefunction, options, cfg.sampler.n_particles);
+    adaptive_wavefunction -> to(options.device());
+    adaptive_wavefunction -> to(torch::kFloat64);
+
+
     auto params = wavefunction -> named_parameters();
 
     n_parameters = 0;
@@ -74,6 +81,9 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
         full_shapes.push_back(key_pair.value().sizes());
         // Add this layer to the total:
         n_parameters += local_params;
+
+        // Set the adaptive wavefunction parameters to the original one:
+        // adaptive_wavefunction->named_parameters()[key_pair.key()].set_(key_pair.value());
     }
 
     PLOG_INFO << "Total parameters: " << n_parameters;
@@ -82,35 +92,22 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     auto input = sampler.sample_x();
 
     // Thermalize the walkers for some large number of initial thermalizations:
-    PLOG_INFO << "Begin initial equilibration";
+    PLOG_INFO << "Begin initial equilibration with " << input.sizes()[0] << " walkers";
     // float acceptance = equilibrate(cfg.sampler.n_thermalize).data_ptr<double>()[0];
     auto acceptance = equilibrate(cfg.sampler.n_thermalize);
     PLOG_INFO << "Done initial equilibration, acceptance = " << acceptance;
 
     auto metrics = sr_step();
 
-    for (int64_t i = 0; i < 10; i ++){
+    for (int64_t i = 0; i < 500; i ++){
         auto start = std::chrono::high_resolution_clock::now();
         metrics = sr_step();
         auto stop = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli>  duration = stop - start;
+        PLOG_INFO << "energy: " << metrics["energy/energy"];
         PLOG_INFO << "Duration: " << duration.count() << "[ms]";
     }
     PLOG_INFO << metrics;
-
-    // PLOG_DEBUG << jac;
-
-  // std::cout << "input.sizes(): "<< input.sizes() << std::endl;
-
-  // auto w_of_x = wavefunction(input);
-
-  // auto start = std::chrono::high_resolution_clock::now();
-  // w_of_x = wavefunction(input);
-  // auto stop = std::chrono::high_resolution_clock::now();
-  // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-  // std::cout << "Just WF time: " << (duration.count()) << " milliseconds" << std::endl;
-  // std::cout << "w_of_x.sizes(): " << w_of_x.sizes() << std::endl;
-
 
 }
 
@@ -197,15 +194,15 @@ std::vector<torch::Tensor> BaseOptimizer::compute_O_observables(
 
     ///TODO : divide by n_walkers_per_obs - DONE?
     auto dpsi_ij = torch::matmul(normed_fj_t, normed_fj) / config.sampler.n_walkers;
-    // auto dpsi_ij = tf.linalg.matmul(normed_fj_t, normed_fj, transpose_a = True) / self.n_walkers_per_observation
 
 
     ///TODO: Compute <O^m H>
     // # Computing <O^m H>:
     auto e_reshaped = torch::reshape(energy, {1,config.sampler.n_walkers});
 
-
-    auto dpsi_i_EL = torch::matmul(e_reshaped, normed_fj);
+    // PLOG_INFO << "e_reshaped.sizes(): " << e_reshaped.sizes();
+    // PLOG_INFO << "normed_fj.sizes(): " << normed_fj.sizes();
+    auto dpsi_i_EL = torch::matmul(e_reshaped, normed_fj).flatten();
     // # This makes this the same shape as the other tensors
     // dpsi_i_EL = tf.reshape(dpsi_i_EL, [-1, 1])
 
@@ -288,14 +285,15 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
         auto pe_v         = torch::chunk(pe,        config.sampler.n_concurrent_obs_per_rank, 0);
         auto w_of_x_v     = torch::chunk(w_of_x,    config.sampler.n_concurrent_obs_per_rank, 0);
 
-        for (auto w : w_of_x_v) current_psi.push_back(w);
+        // for (auto w : w_of_x_v) current_psi.push_back(w);
+        current_psi.push_back(w_of_x);
 
 
 
         // For each observation, we compute the jacobian.
-        // flattened_jacobian, flat_shape = self.batched_jacobian(
+        // flattened_jacobian, flat_shape = batched_jacobian(
             // config.sampler.n_concurrent_obs_per_rank, x_current,
-            // spin, isospin, _wavefunction, self.jacobian)
+            // spin, isospin, _wavefunction, jacobian)
 
         auto jac = jacobian(x_current, wavefunction);
 
@@ -314,7 +312,7 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
             auto observables = compute_O_observables(
                 split_jacobian[i_obs], obs_energy, w_of_x_v[i_obs]);
 
-
+            // this is a poor version of tuple unpacking:
             torch::Tensor dpsi_i = observables[0];
             torch::Tensor dpsi_ij = observables[1];
             torch::Tensor dpsi_i_EL = observables[2];
@@ -357,11 +355,6 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
 std::map<std::string, torch::Tensor> BaseOptimizer::sr_step(){
     std::map<std::string, torch::Tensor> metrics = {};
 
-    // self.latest_gradients = None
-    // self.latest_psi       = None
-
-
-
     // We do a thermalization step again:
     equilibrate(config.sampler.n_thermalize);
 
@@ -373,7 +366,7 @@ std::map<std::string, torch::Tensor> BaseOptimizer::sr_step(){
     std::vector<torch::Tensor> current_psi = walk_and_accumulate_observables();
 
     // At this point, we need to average the observables that feed into the optimizer:
-    estimator.finalize(config.sampler.n_observable_measurements);
+    estimator.finalize(torch::ones({}, options)*config.sampler.n_observable_measurements);
 
 
     auto error = torch::sqrt(
@@ -395,41 +388,42 @@ std::map<std::string, torch::Tensor> BaseOptimizer::sr_step(){
     metrics["energy/ke_direct"]  = estimator["ke_direct"];
     metrics["energy/pe"]         = estimator["pe"];
 
-    PLOG_INFO << "Metrics set";
 
 
-    // Here, we call the function to optimize eps and compute the gradients:
+    // Here, we call the function to optimize eps/delta and compute the gradients:
 
-    ///TODO: HERE
     torch::Tensor next_energy;
-    // delta_p, opt_metrics, next_energy = self.compute_updates_and_metrics(current_psi)
+    std::vector<torch::Tensor> delta_p;
+    auto opt_metrics = compute_updates_and_metrics(current_psi, delta_p, next_energy);
 
     ///TODO: HERE
-    // metrics.update(opt_metrics)
-    // # Compute the ratio of the previous energy and the current energy
-    // auto energy_diff = predicted_energy - estimator["energy"];
-    // metrics["energy/energy_diff"] = energy_diff;
+    metrics.insert(opt_metrics.begin(), opt_metrics.end());
+    // Compute the ratio of the previous energy and the current energy
+    auto energy_diff = predicted_energy - estimator["energy"];
+    metrics["energy/energy_diff"] = energy_diff;
 
-    torch::Tensor gradients;
-    auto opt_metrics = compute_updates_and_metrics(gradients);
-        // # dp_i, opt_metrics = self.grad_calc.sr(
-        // #     self.estimator["energy"],
-        // #     self.estimator["dpsi_i"],
-        // #     self.estimator["dpsi_i_EL"],
-        // #     self.estimator["dpsi_ij"])
-
-
-
-    // ///TODO HERE
-    // // And apply them to the wave function:
-    // apply_gradients(delta_p, self.wavefunction.trainable_variables);
-    // self.latest_gradients = delta_p
-    // self.latest_psi = current_psi
+    ///TODO HERE
+    // And apply them to the wave function:
+    apply_gradients(delta_p);
 
     // Before moving on, set the predicted_energy:
     predicted_energy = next_energy;
 
-    return  metrics;
+    return metrics;
+
+}
+void BaseOptimizer::apply_gradients(
+    const std::vector<torch::Tensor> & gradients){
+
+    c10::InferenceMode guard(true);
+
+    // Even though it's a flat optimization, we recompute the energy to get the overlap too:
+    for (int64_t i_layer = 0; i_layer < full_shapes.size(); i_layer ++){
+        
+        // Bit of a crappy way to do this, may need to optimize later
+        wavefunction -> parameters()[i_layer] += gradients[i_layer];
+        // PLOG_INFO << "  set to :" << adaptive_wavefunction->parameters()[i_layer];
+    }
 
 }
 
@@ -467,9 +461,217 @@ torch::Tensor BaseOptimizer::compute_gradients(
     return dp_i;
 }
 
-std::map<std::string, torch::Tensor> BaseOptimizer::compute_updates_and_metrics(torch::Tensor & gradients){
 
-    std::map<std::string, torch::Tensor> opt_metrics;
+torch::Tensor BaseOptimizer::recompute_energy(
+    ManyBodyWavefunction trial_wf, std::vector<torch::Tensor> current_psi,
+    torch::Tensor & overlap, torch::Tensor & acos){
+
+    // Reset the aux estimator:
+    re_estimator.clear();
+
+    // For all the current_psi positions, recompute the energy in the new locations:
+    auto x_history = sampler.x_history();
+    auto spin_history = sampler.spin_history();
+    auto isospin_history = sampler.isospin_history();
+
+    int64_t start = 0;
+    int64_t end = n_loops_total;
+
+    // TODO - this can likely be optimized going through all obs in big vectors
+
+    for (int64_t i_loop = start; i_loop < end; i_loop++){
+
+        auto this_x = x_history[i_loop];
+        auto this_spin = spin_history[i_loop];
+        auto this_isospin = isospin_history[i_loop];
+        auto this_psi = current_psi[i_loop];
+
+        torch::Tensor energy_jf, ke_jf, ke_direct, pe, w_of_x;
+        auto energy = \
+            hamiltonian.energy(
+                trial_wf, this_x, // this_spin, this_isospin,  // spin/isospin not yet
+                energy_jf, // return by reference
+                ke_jf,
+                ke_direct,
+                pe,
+                w_of_x
+            );
+
+        // we need to compute the ratio of wavefunctions for each walker configuration.
+        // We can do that before chunking and then split the ratio:
+        auto wavefunction_ratio = w_of_x / this_psi;
+
+        auto probability_ratio = torch::pow(wavefunction_ratio, 2.);
+
+        // this should be a dot product.
+        auto normalized_energy = energy * probability_ratio;
+
+        // If necessary, chunk the observables cared about:
+
+        auto energy_v = torch::chunk(normalized_energy,  config.sampler.n_concurrent_obs_per_rank, 0);
+        auto w_ratio  = torch::chunk(wavefunction_ratio, config.sampler.n_concurrent_obs_per_rank, 0);
+        auto p_ratio  = torch::chunk(probability_ratio,  config.sampler.n_concurrent_obs_per_rank, 0);
+
+
+        // Accumulate all the pieces:
+        for (int64_t i_obs = 0; i_obs < config.sampler.n_concurrent_obs_per_rank; i_obs ++){
+
+            re_estimator.accumulate("energy", torch::sum(energy_v[i_obs]));
+            re_estimator.accumulate("weight", torch::sum(p_ratio[i_obs]));
+            re_estimator.accumulate("wavefunction_ratio", torch::sum(w_ratio[i_obs]));
+            re_estimator.accumulate("N", torch::ones({},options)*config.sampler.n_walkers);
+
+        }
+    }
+
+
+
+    if (MPI_AVAILABLE){
+        re_estimator.allreduce();
+    }
+
+
+    // # What's the total weight?  Use that for the finalization:
+    auto total_weight = re_estimator["weight"];
+
+    //  Get the overlap
+    auto wavefunction_ratio = re_estimator["wavefunction_ratio"];
+    auto probability_ratio = re_estimator["weight"];
+
+    auto N = re_estimator["N"];
+
+
+    auto overlap2 = torch::pow(wavefunction_ratio / N, 2) / (probability_ratio / N);
+
+
+    re_estimator.finalize(total_weight);
+    
+    // Set the return-by-ref values
+    overlap  = torch::sqrt(overlap2);
+    acos     = torch::pow(torch::acos(overlap),2);
+
+
+    return re_estimator["energy"];
+
+
+}
+
+std::map<std::string, torch::Tensor> BaseOptimizer::compute_updates_and_metrics(
+    std::vector<torch::Tensor> current_psi, 
+    std::vector<torch::Tensor> & gradients, 
+    torch::Tensor & next_energy){
+
+    // This particular instance is just a pass through, but intended
+    // to be an overriden entry point to a better optimization algorithm
+    auto opt_metrics = flat_optimizer(
+        current_psi, gradients, next_energy);
+
     return opt_metrics;
 
 }
+
+std::vector<torch::Tensor> BaseOptimizer::unflatten_weights_or_gradients(
+    torch::Tensor flat_gradients){
+    
+    // We take in a tensor of flat gradients; we return the gradients chopped up
+    // and reshaped to proper values.
+
+    std::vector<torch::Tensor> result;
+
+
+    int64_t start = 0;
+    int64_t end = flat_shapes[0];
+
+    for (int64_t i_layer = 0; i_layer < full_shapes.size(); i_layer ++){
+        
+
+        // First get the slice in a flat form:
+        auto flat_layer = flat_gradients.index({Slice(start, end)});
+
+        // update the bounds of the indexing for next time:
+        if (i_layer != full_shapes.size() - 1){
+             // We move the end to the start:
+            start = end;
+            // and add to the end the next value:
+            end += flat_shapes[i_layer+1];       
+        }
+
+        // reshape and append:
+        result.push_back(flat_layer.reshape(full_shapes[i_layer]));
+
+    }
+
+    return result;
+}
+
+std::map<std::string, torch::Tensor> BaseOptimizer::flat_optimizer(
+    std::vector<torch::Tensor> current_psi, 
+    std::vector<torch::Tensor> & gradients, 
+    torch::Tensor & next_energy){
+
+
+    torch::Tensor S_ij;
+    auto dp_i =  compute_gradients(
+        estimator["dpsi_i"], 
+        estimator["energy"], 
+        estimator["dpsi_i_EL"], 
+        estimator["dpsi_ij"], 
+        torch::full({}, config.epsilon, options),
+        S_ij);
+
+    auto delta_p = dp_i * torch::full({}, config.delta, options);
+
+    // Unpack the gradients
+    // TODO
+    gradients = unflatten_weights_or_gradients(delta_p);
+    auto adaptive_params = adaptive_wavefunction->parameters();
+
+
+    auto original_weights = wavefunction->parameters();
+    {   
+        c10::InferenceMode guard(true);
+
+        // Even though it's a flat optimization, we recompute the energy to get the overlap too:
+        for (int64_t i_layer = 0; i_layer < original_weights.size(); i_layer ++){
+            
+            // PLOG_INFO << "original " << i_layer << ": " << original_weights[i_layer];
+            // PLOG_INFO << "  gradient " << i_layer << ": " << gradients[i_layer];
+            // PLOG_INFO << "  initial value :" << adaptive_wavefunction->parameters()[i_layer];
+            // Bit of a crappy way to do this, may need to optimize later
+            adaptive_wavefunction -> parameters()[i_layer] += 
+                original_weights[i_layer] - adaptive_params[i_layer] + gradients[i_layer];
+            // PLOG_INFO << "  set to :" << adaptive_wavefunction->parameters()[i_layer];
+        }
+    }
+
+    // Compute the new energy:
+    torch::Tensor acos, overlap;
+    next_energy = recompute_energy(
+        adaptive_wavefunction, current_psi,
+        overlap, acos);
+
+    // Compute the parameter distance:
+    torch::Tensor par_dist = grad_calc.par_dist(dp_i, S_ij);
+    torch::Tensor ratio    = torch::abs(par_dist - acos) / torch::abs(par_dist + acos+ 1e-8);
+
+
+    std::map<std::string, torch::Tensor> opt_metrics = {
+        {"optimizer/delta"   , torch::full({}, config.delta, options)},
+        {"optimizer/eps"     , torch::full({}, config.epsilon, options)},
+        {"optimizer/overlap" , overlap},
+        {"optimizer/par_dist", par_dist},
+        {"optimizer/acos"    , acos},
+        {"optimizer/ratio"   , ratio},
+    };
+
+    // return opt_metrics
+    return opt_metrics;
+}
+
+    
+
+
+
+
+
+

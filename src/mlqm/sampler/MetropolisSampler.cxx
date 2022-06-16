@@ -25,6 +25,7 @@ MetropolisSampler::MetropolisSampler(SamplerConfig _cfg, torch::TensorOptions op
         this -> spin    = -1. * torch::ones({n_walkers_opt_shape,cfg.n_particles}, opts); // spin either up/down
         // Set a fixed number to 1:
         for (int64_t i = 0; i < cfg.n_spin_up; i++){
+            if (i >= cfg.n_particles) break;
             spin.index_put_({Slice{}, i},1.0);        
         }
     }
@@ -32,6 +33,7 @@ MetropolisSampler::MetropolisSampler(SamplerConfig _cfg, torch::TensorOptions op
         this -> isospin = -1 * torch::ones({n_walkers_opt_shape,cfg.n_particles}, opts); // isospin either up/down
         // Set a fixed number to 1:
         for (int64_t i = 0; i < cfg.n_protons; i++){
+            if (i >= cfg.n_particles) break;
             isospin.index_put_({Slice{}, i},1.0);
         }
     }
@@ -39,23 +41,23 @@ MetropolisSampler::MetropolisSampler(SamplerConfig _cfg, torch::TensorOptions op
 }
 
 torch::Tensor MetropolisSampler::sample_x(){
-    x_history.push_back(torch::clone(x)); 
+    stored_x_history.push_back(torch::clone(x)); 
     return torch::clone(x);
 }
 
 torch::Tensor MetropolisSampler::sample_spin(){
-    spin_history.push_back(torch::clone(spin));
+    stored_spin_history.push_back(torch::clone(spin));
     return torch::clone(spin);
 }
 torch::Tensor MetropolisSampler::sample_isospin(){
-    isospin_history.push_back(torch::clone(isospin));
+    stored_isospin_history.push_back(torch::clone(isospin));
     return torch::clone(isospin);
 }
 
 void MetropolisSampler::reset_history(){
-    x_history.clear(); 
-    spin_history.clear(); 
-    isospin_history.clear();
+    stored_x_history.clear(); 
+    stored_spin_history.clear(); 
+    stored_isospin_history.clear();
 }
 
 

@@ -7,6 +7,8 @@ void to_json(json& j, const Config& cfg){
         {"sampler"     , cfg.sampler},
         {"wavefunction", cfg.wavefunction},
         {"hamiltonian", cfg.hamiltonian},
+        {"delta", cfg.delta},
+        {"epsilon", cfg.epsilon},
     };
 }    
 
@@ -15,4 +17,6 @@ void from_json(const json& j, Config& cfg ){
     j.at("sampler").get_to(cfg.sampler);
     j.at("wavefunction").get_to(cfg.wavefunction);
     j.at("hamiltonian").get_to(cfg.hamiltonian);
+    j.at("delta").get_to(cfg.delta);
+    j.at("epsilon").get_to(cfg.epsilon);
 }
