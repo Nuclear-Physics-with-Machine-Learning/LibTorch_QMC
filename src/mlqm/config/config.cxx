@@ -10,6 +10,7 @@ void to_json(json& j, const Config& cfg){
         {"delta", cfg.delta},
         {"epsilon", cfg.epsilon},
         {"n_iterations", cfg.n_iterations},
+        {"out_dir", cfg.out_dir},
     };
 }    
 
@@ -21,4 +22,5 @@ void from_json(const json& j, Config& cfg ){
     j.at("delta").get_to(cfg.delta);
     j.at("epsilon").get_to(cfg.epsilon);
     j.at("n_iterations").get_to(cfg.n_iterations);
+    j.at("out_dir").get_to(cfg.out_dir);
 }

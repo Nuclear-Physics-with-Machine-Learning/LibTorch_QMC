@@ -52,5 +52,6 @@
     },
     "delta" : 0.01,
     "epsilon" : 0.001,
-    "n_iterations" : 50
+    "n_iterations" : 50,
+    "out_dir": "output/test/"
 }

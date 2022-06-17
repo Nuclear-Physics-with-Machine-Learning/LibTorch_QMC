@@ -14,6 +14,9 @@
 #include "plog/Initializers/RollingFileInitializer.h"
 #include "plog/Appenders/ConsoleAppender.h"
 
+// FOr logging:
+// #include "tensorboard_logger.h"
+
 int main(int argc, char* argv[]) {
 
   /////////////////////////////////////////////
@@ -79,6 +82,10 @@ int main(int argc, char* argv[]) {
     PLOG_INFO << "CUDA is available! Training on GPU.";
     options = options.device(torch::kCUDA);
   }
+
+  // Configure a logger:
+  
+  // TensorBoardLogger logger(cfg.out_dir);
 
   PLOG_INFO << "Device selected: " << options.device();
 

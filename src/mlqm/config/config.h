@@ -21,6 +21,7 @@ struct Config{
     float delta;
     float epsilon;
     int n_iterations;
+    std::string out_dir;
 };
 
 void to_json(json& j, const Config& s);

@@ -64,8 +64,9 @@ add_subdirectory("Catch2")
 add_subdirectory("plog")
 include_directories("plog/include")
 
-# Add tensorboard:
-
+# # Add tensorboard:
+# add_subdirectory("tensorboard_logger")
+# include_directories("tensorboard_logger/include")
 
 
 add_subdirectory(mlqm)

@@ -55,6 +55,7 @@ struct MLPImpl : torch::nn::Module {
         // register_module("layer4", layer4);
     }
 
+
     torch::Tensor forward(torch::Tensor x);
 
     MLPConfig cfg;
