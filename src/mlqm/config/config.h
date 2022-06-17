@@ -20,6 +20,7 @@ struct Config{
     NuclearHamiltonianConfig hamiltonian;
     float delta;
     float epsilon;
+    int n_iterations;
 };
 
 void to_json(json& j, const Config& s);

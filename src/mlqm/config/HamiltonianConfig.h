@@ -19,7 +19,6 @@ using json = nlohmann::json;
 #include "plog/Appenders/ConsoleAppender.h"
 
 
-
 struct NuclearHamiltonianConfig{
     float  M;
     float  HBAR;

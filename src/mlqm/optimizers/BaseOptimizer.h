@@ -138,6 +138,11 @@ public:
      */
     std::map<std::string, torch::Tensor> sr_step();
 
+    /**
+     * @brief      Update the wavefunction with the supplied gradients
+     *
+     * @param[in]  gradients  The gradients
+     */
     void apply_gradients(const std::vector<torch::Tensor> & gradients);
 
 private:

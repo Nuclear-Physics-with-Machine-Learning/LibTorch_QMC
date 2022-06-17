@@ -51,5 +51,6 @@
         "mean_subtract"     : false
     },
     "delta" : 0.01,
-    "epsilon" : 0.001
+    "epsilon" : 0.001,
+    "n_iterations" : 50
 }

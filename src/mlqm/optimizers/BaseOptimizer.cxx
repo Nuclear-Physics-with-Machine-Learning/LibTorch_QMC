@@ -85,7 +85,7 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
         // Set the adaptive wavefunction parameters to the original one:
         // adaptive_wavefunction->named_parameters()[key_pair.key()].set_(key_pair.value());
     }
-
+ 
     PLOG_INFO << "Total parameters: " << n_parameters;
 
     // Initialize random input:
@@ -97,17 +97,7 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     auto acceptance = equilibrate(cfg.sampler.n_thermalize);
     PLOG_INFO << "Done initial equilibration, acceptance = " << acceptance;
 
-    auto metrics = sr_step();
 
-    for (int64_t i = 0; i < 500; i ++){
-        auto start = std::chrono::high_resolution_clock::now();
-        metrics = sr_step();
-        auto stop = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli>  duration = stop - start;
-        PLOG_INFO << "energy: " << metrics["energy/energy"];
-        PLOG_INFO << "Duration: " << duration.count() << "[ms]";
-    }
-    PLOG_INFO << metrics;
 
 }
 
