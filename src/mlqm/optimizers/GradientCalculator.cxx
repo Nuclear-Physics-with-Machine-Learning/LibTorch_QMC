@@ -1,5 +1,7 @@
 #include "GradientCalculator.h"
 
+#include <torch/linalg.h>
+
 torch::Tensor GradientCalculator::f_i(
     torch::Tensor dpsi_i, torch::Tensor energy, torch::Tensor dpsi_i_EL){
     // return (dpsi_i * energy - dpsi_i_EL)
@@ -10,13 +12,13 @@ torch::Tensor GradientCalculator::f_i(
 }
 torch::Tensor GradientCalculator::S_ij(
     torch::Tensor dpsi_ij, torch::Tensor dpsi_i){
-    // return dpsi_ij - dpsi_i * tf.transpose(dpsi_i)    
+    // return dpsi_ij - dpsi_i * tf.transpose(dpsi_i)
     // PLOG_INFO << "dpsi_ij.sizes(): " << dpsi_ij.sizes();
     // PLOG_INFO << "dpsi_i.sizes(): " << dpsi_i.sizes();
     auto dpsi_i_extended = torch::reshape(dpsi_i, {-1, 1});
     // PLOG_INFO << "dpsi_i_extended.sizes(): " << dpsi_i_extended.sizes();
     // PLOG_INFO << "torch::transpose(dpsi_i_extended, 0, 1).sizes(): " << torch::transpose(dpsi_i_extended, 0, 1).sizes();
-    return dpsi_ij -  dpsi_i_extended * torch::transpose(dpsi_i_extended, 0, 1); 
+    return dpsi_ij -  dpsi_i_extended * torch::transpose(dpsi_i_extended, 0, 1);
 }
 torch::Tensor GradientCalculator::par_dist(
     torch::Tensor dp_i, torch::Tensor S_ij){
@@ -56,7 +58,7 @@ torch::Tensor GradientCalculator::pd_solve(
     // PLOG_INFO << "U_ij.sizes(): " << U_ij.sizes();
 
 
-    // The solve_triangular function expects to be batching 
+    // The solve_triangular function expects to be batching
     // matrix solves, so have to feed in batch size 1:
 
     auto n_params = U_ij.sizes()[0];
@@ -73,7 +75,7 @@ torch::Tensor GradientCalculator::pd_solve(
     // U_ij = torch::reshape(U_ij, {n_params, n_params});
     // PLOG_INFO << "f_i.sizes(): " << f_i.sizes();
     // PLOG_INFO << "U_ij.sizes(): " << U_ij.sizes();
-    
+
     // Solve the equation
     auto dp_i = torch::linalg::solve_triangular(
         U_ij, // input
@@ -84,28 +86,24 @@ torch::Tensor GradientCalculator::pd_solve(
     );
 
     /*
-     *If upper= True (resp. False) just the upper (resp. lower) 
-     *triangular half of A will be accessed. The elements below 
-     *the main diagonal will be considered to be zero and 
+     *If upper= True (resp. False) just the upper (resp. lower)
+     *triangular half of A will be accessed. The elements below
+     *the main diagonal will be considered to be zero and
      *will not be accessed.
      *
      *If unitriangular= True, the diagonal of A is assumed to be
      *ones and will not be accessed.
-     * 
-     *The result may contain NaN s if the diagonal of A contains 
-     *zeros or elements that are very close to zero and 
-     *unitriangular= False (default) or if the input matrix has 
+     *
+     *The result may contain NaN s if the diagonal of A contains
+     *zeros or elements that are very close to zero and
+     *unitriangular= False (default) or if the input matrix has
      *very small eigenvalues.
      *
-     *Supports inputs of float, double, cfloat and cdouble dtypes. 
-     *Also supports batches of matrices, and if the inputs are 
-     *batches of matrices then the output has the same batch 
+     *Supports inputs of float, double, cfloat and cdouble dtypes.
+     *Also supports batches of matrices, and if the inputs are
+     *batches of matrices then the output has the same batch
      *dimensions.
     */
 
     return dp_i;
 }
-
-
-
-        

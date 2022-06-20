@@ -27,7 +27,7 @@ def run_build(_build_dir):
 
 
     command = ['make']
-    command += ['-j', str(16)]
+    command += ['-j', str(32)]
 
     proc = subprocess.Popen(
         command,

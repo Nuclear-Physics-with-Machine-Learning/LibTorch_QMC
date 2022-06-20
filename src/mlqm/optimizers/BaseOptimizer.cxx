@@ -19,7 +19,7 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     // Turn off inference mode at the highest level
     c10::InferenceMode guard(false);
 
-// 
+//
 // #ifdef OPENMP_FOUND
 //     omp_set_num_threads(32);
 //     PLOG_INFO << "Using omp threads: " << omp_get_num_threads();
@@ -45,7 +45,7 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
 
 
     // We do a check that n_loops_total * n_concurrent_obs_per_rank matches expectations:
-    if (n_loops_total * config.sampler.n_concurrent_obs_per_rank*size 
+    if (n_loops_total * config.sampler.n_concurrent_obs_per_rank*size
             != config.sampler.n_observable_measurements){
         std::stringstream exception_str;
         exception_str << "Total number of observations to compute is unexpected!\n";
@@ -85,7 +85,7 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
         // Set the adaptive wavefunction parameters to the original one:
         // adaptive_wavefunction->named_parameters()[key_pair.key()].set_(key_pair.value());
     }
- 
+
     PLOG_INFO << "Total parameters: " << n_parameters;
 
     // Initialize random input:
@@ -97,6 +97,12 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     auto acceptance = equilibrate(cfg.sampler.n_thermalize);
     PLOG_INFO << "Done initial equilibration, acceptance = " << acceptance;
 
+
+
+    for (size_t i = 0; i < 15; i ++){
+        auto metrics = sr_step();
+        PLOG_INFO << metrics;
+    }
 
 
 }
@@ -127,7 +133,7 @@ torch::Tensor BaseOptimizer::jacobian(torch::Tensor x_current, ManyBodyWavefunct
 
 
     // Construct a series of grad outputs:
-    auto outputs = torch::eye(n_walkers);
+    auto outputs = torch::eye(n_walkers, options);
 
     // Flatten and chunk it:
     auto output_list = torch::chunk(torch::flatten(outputs), n_walkers);
@@ -150,6 +156,7 @@ torch::Tensor BaseOptimizer::jacobian(torch::Tensor x_current, ManyBodyWavefunct
         );
         std::vector<torch::Tensor> flat_this_jac;
         for(auto & grad : jacobian_list) flat_this_jac.push_back(grad.flatten());
+
         // Flatten the jacobian and put it into the larger matrix.
         // Note the normalization by wavefunction happens here too.
         jacobian_flat.index_put_({i_walker, Slice()}, torch::cat(flat_this_jac) / psi_v[i_walker]);
@@ -345,6 +352,7 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
 std::map<std::string, torch::Tensor> BaseOptimizer::sr_step(){
     std::map<std::string, torch::Tensor> metrics = {};
 
+
     // We do a thermalization step again:
     equilibrate(config.sampler.n_thermalize);
 
@@ -386,13 +394,11 @@ std::map<std::string, torch::Tensor> BaseOptimizer::sr_step(){
     std::vector<torch::Tensor> delta_p;
     auto opt_metrics = compute_updates_and_metrics(current_psi, delta_p, next_energy);
 
-    ///TODO: HERE
     metrics.insert(opt_metrics.begin(), opt_metrics.end());
     // Compute the ratio of the previous energy and the current energy
     auto energy_diff = predicted_energy - estimator["energy"];
     metrics["energy/energy_diff"] = energy_diff;
 
-    ///TODO HERE
     // And apply them to the wave function:
     apply_gradients(delta_p);
 
@@ -408,8 +414,8 @@ void BaseOptimizer::apply_gradients(
     c10::InferenceMode guard(true);
 
     // Even though it's a flat optimization, we recompute the energy to get the overlap too:
-    for (int64_t i_layer = 0; i_layer < full_shapes.size(); i_layer ++){
-        
+    for (size_t i_layer = 0; i_layer < full_shapes.size(); i_layer ++){
+
         // Bit of a crappy way to do this, may need to optimize later
         wavefunction -> parameters()[i_layer] += gradients[i_layer];
         // PLOG_INFO << "  set to :" << adaptive_wavefunction->parameters()[i_layer];
@@ -535,7 +541,7 @@ torch::Tensor BaseOptimizer::recompute_energy(
 
 
     re_estimator.finalize(total_weight);
-    
+
     // Set the return-by-ref values
     overlap  = torch::sqrt(overlap2);
     acos     = torch::pow(torch::acos(overlap),2);
@@ -547,8 +553,8 @@ torch::Tensor BaseOptimizer::recompute_energy(
 }
 
 std::map<std::string, torch::Tensor> BaseOptimizer::compute_updates_and_metrics(
-    std::vector<torch::Tensor> current_psi, 
-    std::vector<torch::Tensor> & gradients, 
+    std::vector<torch::Tensor> current_psi,
+    std::vector<torch::Tensor> & gradients,
     torch::Tensor & next_energy){
 
     // This particular instance is just a pass through, but intended
@@ -562,7 +568,7 @@ std::map<std::string, torch::Tensor> BaseOptimizer::compute_updates_and_metrics(
 
 std::vector<torch::Tensor> BaseOptimizer::unflatten_weights_or_gradients(
     torch::Tensor flat_gradients){
-    
+
     // We take in a tensor of flat gradients; we return the gradients chopped up
     // and reshaped to proper values.
 
@@ -572,8 +578,8 @@ std::vector<torch::Tensor> BaseOptimizer::unflatten_weights_or_gradients(
     int64_t start = 0;
     int64_t end = flat_shapes[0];
 
-    for (int64_t i_layer = 0; i_layer < full_shapes.size(); i_layer ++){
-        
+    for (size_t i_layer = 0; i_layer < full_shapes.size(); i_layer ++){
+
 
         // First get the slice in a flat form:
         auto flat_layer = flat_gradients.index({Slice(start, end)});
@@ -583,7 +589,7 @@ std::vector<torch::Tensor> BaseOptimizer::unflatten_weights_or_gradients(
              // We move the end to the start:
             start = end;
             // and add to the end the next value:
-            end += flat_shapes[i_layer+1];       
+            end += flat_shapes[i_layer+1];
         }
 
         // reshape and append:
@@ -595,17 +601,17 @@ std::vector<torch::Tensor> BaseOptimizer::unflatten_weights_or_gradients(
 }
 
 std::map<std::string, torch::Tensor> BaseOptimizer::flat_optimizer(
-    std::vector<torch::Tensor> current_psi, 
-    std::vector<torch::Tensor> & gradients, 
+    std::vector<torch::Tensor> current_psi,
+    std::vector<torch::Tensor> & gradients,
     torch::Tensor & next_energy){
 
 
     torch::Tensor S_ij;
     auto dp_i =  compute_gradients(
-        estimator["dpsi_i"], 
-        estimator["energy"], 
-        estimator["dpsi_i_EL"], 
-        estimator["dpsi_ij"], 
+        estimator["dpsi_i"],
+        estimator["energy"],
+        estimator["dpsi_i_EL"],
+        estimator["dpsi_ij"],
         torch::full({}, config.epsilon, options),
         S_ij);
 
@@ -618,17 +624,17 @@ std::map<std::string, torch::Tensor> BaseOptimizer::flat_optimizer(
 
 
     auto original_weights = wavefunction->parameters();
-    {   
+    {
         c10::InferenceMode guard(true);
 
         // Even though it's a flat optimization, we recompute the energy to get the overlap too:
-        for (int64_t i_layer = 0; i_layer < original_weights.size(); i_layer ++){
-            
-            // PLOG_INFO << "original " << i_layer << ": " << original_weights[i_layer];
-            // PLOG_INFO << "  gradient " << i_layer << ": " << gradients[i_layer];
-            // PLOG_INFO << "  initial value :" << adaptive_wavefunction->parameters()[i_layer];
+        for (size_t i_layer = 0; i_layer < original_weights.size(); i_layer ++){
+
+            PLOG_INFO << "original " << i_layer << ": " << original_weights[i_layer];
+            PLOG_INFO << "  gradient " << i_layer << ": " << gradients[i_layer];
+            PLOG_INFO << "  initial value :" << adaptive_wavefunction->parameters()[i_layer];
             // Bit of a crappy way to do this, may need to optimize later
-            adaptive_wavefunction -> parameters()[i_layer] += 
+            adaptive_wavefunction -> parameters()[i_layer] +=
                 original_weights[i_layer] - adaptive_params[i_layer] + gradients[i_layer];
             // PLOG_INFO << "  set to :" << adaptive_wavefunction->parameters()[i_layer];
         }
@@ -657,11 +663,3 @@ std::map<std::string, torch::Tensor> BaseOptimizer::flat_optimizer(
     // return opt_metrics
     return opt_metrics;
 }
-
-    
-
-
-
-
-
-
