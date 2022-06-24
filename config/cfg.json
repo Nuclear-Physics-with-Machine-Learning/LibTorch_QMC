@@ -5,8 +5,8 @@
         "OMEGA" : 1.0
     },
     "sampler": {
-        "n_walkers" : 100,
-        "n_particles" : 1,
+        "n_walkers" : 500,
+        "n_particles" : 2,
         "n_dim" : 1,
         "n_spin_up" : 2,
         "n_protons" : 1,
@@ -16,42 +16,43 @@
         "kick_std" : 0.5,
         "n_thermalize": 1500,
         "n_void_steps": 200,
-        "n_observable_measurements": 5,
+        "n_observable_measurements": 20,
         "n_concurrent_obs_per_rank": 5
     },
     "wavefunction": {
         "spatial_config": {
             "n_input" : 1,
-            "n_output" : 16,
-            "n_layers" : 2,
-            "n_filters_per_layer" : 16,
+            "n_output" : 32,
+            "n_layers" : 4,
+            "n_filters_per_layer" : 32,
             "bias" : false,
             "residual" : false
         },
         "correlator_config" : {
             "individual_config" : {
                 "n_input" : 1,
-                "n_output" : 16,
-                "n_layers" : 2,
-                "n_filters_per_layer" : 16,
+                "n_output" : 32,
+                "n_layers" : 4,
+                "n_filters_per_layer" : 32,
                 "bias" : false,
                 "residual" : false
             },
             "aggregate_config"  : {
-                "n_input" : 16,
+                "n_input" : 32,
                 "n_output" : 1,
-                "n_layers" : 2,
-                "n_filters_per_layer" : 16,
+                "n_layers" : 4,
+                "n_filters_per_layer" : 32,
                 "bias" : false,
                 "residual" : false
             },
             "confinement"       : 0.1,
-            "latent_space"      : 16
+            "latent_space"      : 32
         },
         "mean_subtract"     : false
     },
     "delta" : 0.01,
     "epsilon" : 0.001,
-    "n_iterations" : 50,
-    "out_dir": "output/test/"
+    "n_iterations" : 3,
+    "out_dir": "output/test/",
+    "n_concurrent_jacobian" : 500
 }

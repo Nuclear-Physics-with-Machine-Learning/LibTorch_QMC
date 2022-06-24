@@ -19,7 +19,7 @@ struct DeepSetsCorrelatorImpl : torch::nn::Module {
     DeepSetsCorrelatorImpl(DeepSetsCorrelaterConfig _cfg, torch::TensorOptions options);
 
     torch::Tensor forward(torch::Tensor x);
-    
+
     DeepSetsCorrelaterConfig cfg;
     MLP individual_net, aggregate_net;
     torch::TensorOptions opts;

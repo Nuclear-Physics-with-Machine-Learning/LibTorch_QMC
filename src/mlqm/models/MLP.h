@@ -43,7 +43,7 @@ struct MLPImpl : torch::nn::Module {
             layers->push_back(layer);
             // skip the activation on the last layer:
             if (i != cfg.n_layers -1){
-                layers->push_back(torch::nn::Tanh());                
+                layers->push_back(torch::nn::Tanh());
             }
             in = out;
             if (i == cfg.n_layers - 2) out = cfg.n_output;

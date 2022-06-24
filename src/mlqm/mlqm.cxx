@@ -84,14 +84,14 @@ int main(int argc, char* argv[]) {
   }
 
   // Configure a logger:
-  
+
   // TensorBoardLogger logger(cfg.out_dir);
 
   PLOG_INFO << "Device selected: " << options.device();
 
   // Create the base algorithm:
   BaseOptimizer optim(cfg, options);
- 
+
   // Run the optimization:
   for (int64_t iteration = 0; iteration < cfg.n_iterations; iteration ++){
       auto start = std::chrono::high_resolution_clock::now();
@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
       std::chrono::duration<double, std::milli>  duration = stop - start;
       PLOG_INFO << "energy: " << metrics["energy/energy"];
       PLOG_INFO << "Duration: " << duration.count() << "[ms]";
-      PLOG_INFO << metrics;
+      // PLOG_INFO << metrics;
   }
 
   return 0;

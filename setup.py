@@ -52,18 +52,16 @@ def run_cmake(src_dir, _build_dir):
 
     # First, we check on some imports
 
-    try:
-        import torch
-
-        cmake_prefix = torch.utils.cmake_prefix_path
-    except:
-        print("Failed to import torch from python, looking for LibTorch on ENV.")
-        print("Please set LIB_TORCH to the cmake path of libtorch")
+    if 'LIB_TORCH' in os.environ:
+        cmake_prefix = os.environ['LIB_TORCH']
+    else:
+        print("Failed to find LibTorch in env variables, looking for pytorch installation.")
         try:
-            cmake_prefix = os.environ['LIB_TORCH']
+            import torch
+            cmake_prefix = torch.utils.cmake_prefix_path
         except:
-            print("Could not find libtorch, aborting.")
-            raise Exception()
+            print("Failed to import torch from python")
+            raise Exception("Could not find any installation of libtorch.")
 
     command = ['cmake']
     command += [f'-DCMAKE_PREFIX_PATH={cmake_prefix}']

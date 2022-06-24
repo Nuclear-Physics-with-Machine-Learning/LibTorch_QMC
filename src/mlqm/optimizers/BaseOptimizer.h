@@ -23,7 +23,7 @@ class BaseOptimizer
 public:
     BaseOptimizer(Config cfg, torch::TensorOptions opts);
     ~BaseOptimizer(){}
-    
+
     /**
      * @brief      Compute jacobian of the wavefunction parameters for each configuration
      *
@@ -33,6 +33,8 @@ public:
      * @return     jacobian matrix of shape [n_walkers, n_parameters]
      */
     torch::Tensor jacobian(torch::Tensor x_current, ManyBodyWavefunction wavefunction);
+
+    torch::Tensor batch_jacobian(torch::Tensor x_current, ManyBodyWavefunction wavefunction);
 
     /**
      * @brief      Calculates the O observables. (dpsi_i, dpsi_ij, dpsi_i_EL)
@@ -44,8 +46,8 @@ public:
      * @return     The o observables.
      */
     std::vector<torch::Tensor> compute_O_observables(
-        torch::Tensor flattened_jacobian, 
-        torch::Tensor energy, 
+        torch::Tensor flattened_jacobian,
+        torch::Tensor energy,
         torch::Tensor w_of_x);
 
     /**
@@ -96,8 +98,8 @@ public:
      * @return     optimiziation metrics
      */
     std::map<std::string, torch::Tensor> flat_optimizer(
-        std::vector<torch::Tensor> current_psi, 
-        std::vector<torch::Tensor> & gradients, 
+        std::vector<torch::Tensor> current_psi,
+        std::vector<torch::Tensor> & gradients,
         torch::Tensor & next_energy);
 
 
@@ -107,7 +109,7 @@ public:
      * @return     Returns tensor of current_psi values for each observation step
      */
     std::vector<torch::Tensor> walk_and_accumulate_observables();
-    
+
     /**
      * @brief      Calculates the updates and metrics.
      *
@@ -118,8 +120,8 @@ public:
      * @return     The metrics.
      */
     std::map<std::string, torch::Tensor> compute_updates_and_metrics(
-        std::vector<torch::Tensor> current_psi, 
-        std::vector<torch::Tensor> & gradients, 
+        std::vector<torch::Tensor> current_psi,
+        std::vector<torch::Tensor> & gradients,
         torch::Tensor & next_energy);
 
     /**
@@ -145,11 +147,15 @@ public:
      */
     void apply_gradients(const std::vector<torch::Tensor> & gradients);
 
+
+    void set_weights(ManyBodyWavefunction & wf,
+        const std::vector<torch::Tensor> & weights);
+
 private:
 
     // Overall configuration:
     Config config;
-    
+
     // Tensor Creation Options:
     torch::TensorOptions options;
 
@@ -162,6 +168,9 @@ private:
     // The trial wavefunction for update optimization:
     ManyBodyWavefunction adaptive_wavefunction = nullptr;
 
+    // Vector of wavefunctions used to parallelize the jacobian.
+    std::vector<ManyBodyWavefunction> wf_copies;
+
     // The hamiltonian class
     NuclearHamiltonian hamiltonian;
 
@@ -170,7 +179,7 @@ private:
 
     // Way to accumlate and all reduce objects:
     Accumulator estimator, re_estimator;
- 
+
     // Global MPI size
     int size;
 
@@ -193,6 +202,3 @@ private:
 
 
 };
-
-
-

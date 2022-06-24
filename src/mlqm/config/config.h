@@ -22,6 +22,7 @@ struct Config{
     float epsilon;
     int n_iterations;
     std::string out_dir;
+    size_t n_concurrent_jacobian;
 };
 
 void to_json(json& j, const Config& s);

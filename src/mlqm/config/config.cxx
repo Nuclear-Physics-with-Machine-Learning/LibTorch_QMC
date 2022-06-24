@@ -11,8 +11,9 @@ void to_json(json& j, const Config& cfg){
         {"epsilon", cfg.epsilon},
         {"n_iterations", cfg.n_iterations},
         {"out_dir", cfg.out_dir},
+        {"n_concurrent_jacobian", cfg.n_concurrent_jacobian},
     };
-}    
+}
 
 void from_json(const json& j, Config& cfg ){
 
@@ -23,4 +24,5 @@ void from_json(const json& j, Config& cfg ){
     j.at("epsilon").get_to(cfg.epsilon);
     j.at("n_iterations").get_to(cfg.n_iterations);
     j.at("out_dir").get_to(cfg.out_dir);
+    j.at("n_concurrent_jacobian").get_to(cfg.n_concurrent_jacobian);
 }
