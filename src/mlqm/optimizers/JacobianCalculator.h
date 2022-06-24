@@ -19,12 +19,12 @@ public:
     // Constructor takes tensor options and a wavefunction
     JacobianCalculator(torch::TensorOptions opts) : options(opts) {}
     ~JacobianCalculator(){}
-    
+
     /**
-     * @brief       Initialize copies of the wavefunction that can be used to batch 
+     * @brief       Initialize copies of the wavefunction that can be used to batch
      *              Jacobian calculations in either mode.  Only needs to be called once
      *              at initialization.
-     * 
+     *
      *
      * @param[in]  wf           Initialized target wavefunction
      * @param[in]  concurrency  How many copies to make for concurrency.
@@ -62,7 +62,7 @@ public:
      * @return     jacobian matrix of shape [n_walkers, n_parameters]
      */
     torch::Tensor jacobian_reverse(torch::Tensor x_current, ManyBodyWavefunction wavefunction);
-    
+
     /**
      * @brief      Batch calls to the reverse mode jacobian calculation, using wf copies.
      *
@@ -83,9 +83,14 @@ public:
     void set_weights(ManyBodyWavefunction & wf,
         const std::vector<torch::Tensor> & weights);
 
+    /**
+     * @brief Compute one column of the jacobian function (one parameter, all walkers)
+     */
+    torch::Tensor jacobian_forward_weight( torch::Tensor psi,
+        torch::Tensor x_current, ManyBodyWavefunction wavefunction, int64_t weight_index);
 
 private:
-    
+
     // Vector of wavefunctions used to parallelize the jacobian.
     std::vector<ManyBodyWavefunction> wf_copies;
 
@@ -98,7 +103,7 @@ private:
     // What level of concurrency?
     int64_t concurrency;
 
-    
+
     // Store the flattened shape of each parameter layer:
     std::vector<int64_t> flat_shapes;
 

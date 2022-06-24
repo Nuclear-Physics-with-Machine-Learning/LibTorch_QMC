@@ -77,6 +77,7 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     auto params = wavefunction -> named_parameters();
 
     n_parameters = 0;
+    int n_layers = wavefunction->parameters().size();
     for (auto & key_pair : params){
         int64_t local_params = 1;
         for (auto & s : key_pair.value().sizes()){
@@ -93,6 +94,7 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     }
 
     PLOG_INFO << "Total parameters: " << n_parameters;
+    PLOG_INFO << "Total layers: " << n_layers;
 
     // Initialize random input:
     auto input = sampler.sample_x();
@@ -111,17 +113,23 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     std::chrono::duration<double, std::milli>  duration = stop - start;
     PLOG_INFO << "Reverse Jacobian time: " << duration.count() << "[ms]";
 
+    PLOG_DEBUG << "First few Jacobian entries: ";
+    PLOG_DEBUG << "  jac_rev[0][0]: " << jac_rev[0][0];
+    PLOG_DEBUG << "  jac_rev[1][0]: " << jac_rev[1][0];
+    PLOG_DEBUG << "  jac_rev[0][1]: " << jac_rev[0][1];
+    PLOG_DEBUG << "  jac_rev[1][1]: " << jac_rev[1][1];
+
     start = std::chrono::high_resolution_clock::now();
     auto jac_rev_batched = jac_calc.batch_jacobian_reverse(input, wavefunction);
     stop = std::chrono::high_resolution_clock::now();
     duration = stop - start;
     PLOG_INFO << "Batched reverse Jacobian time: " << duration.count() << "[ms]";
 
-    start = std::chrono::high_resolution_clock::now();
-    auto jac_fwd = jac_calc.jacobian_forward(input, wavefunction);
-    stop = std::chrono::high_resolution_clock::now();
-    duration = stop - start;
-    PLOG_INFO << "Forward Jacobian time: " << duration.count() << "[ms]";
+    // start = std::chrono::high_resolution_clock::now();
+    // auto jac_fwd = jac_calc.jacobian_forward(input, wavefunction);
+    // stop = std::chrono::high_resolution_clock::now();
+    // duration = stop - start;
+    // PLOG_INFO << "Forward Jacobian time: " << duration.count() << "[ms]";
 
     start = std::chrono::high_resolution_clock::now();
     auto jac_fwd_batched = jac_calc.batch_jacobian_forward(input, wavefunction);

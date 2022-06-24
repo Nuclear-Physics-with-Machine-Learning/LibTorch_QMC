@@ -22,7 +22,7 @@ void JacobianCalculator::set_weights(ManyBodyWavefunction & wf,
 
 void JacobianCalculator::set_parallelization(ManyBodyWavefunction wf, size_t concurrency){
     // Initialize the copies of the wavefunction used in the batch_jacobian:
-    
+
     // We capture the number of parameters here, too.
     n_parameters = 0;
     for (auto & key_pair : wf->named_parameters()){
@@ -125,7 +125,7 @@ torch::Tensor JacobianCalculator::batch_jacobian_reverse(
     std::vector<torch::Tensor> jac_chunks;
     jac_chunks.resize(concurrency);
 
-    size_t i_chunk;
+    int64_t i_chunk;
 
     #pragma omp parallel for
     for (i_chunk = 0; i_chunk < concurrency; i_chunk ++){
@@ -144,7 +144,7 @@ torch::Tensor JacobianCalculator::batch_jacobian_reverse(
 torch::Tensor JacobianCalculator::jacobian_forward(
     torch::Tensor x_current, ManyBodyWavefunction wavefunction){
 
-    PLOG_INFO << "Enter forward";
+    // PLOG_INFO << "Enter forward";
 
     // How many walkers?
     auto n_walkers = x_current.sizes()[0];
@@ -157,7 +157,8 @@ torch::Tensor JacobianCalculator::jacobian_forward(
     int64_t i_column = 0;
 
     // Loop over the parameters:
-    int64_t i_layer;
+    size_t i_layer;
+    #pragma omp parallel for
     for (i_layer = 0; i_layer < wavefunction->parameters().size(); i_layer++){
 
         auto this_layer = wavefunction->parameters()[i_layer];
@@ -165,7 +166,7 @@ torch::Tensor JacobianCalculator::jacobian_forward(
 
         // How many parameters in this layer?
         auto local_n_params = flat_shapes[i_layer];
-        
+
         // This is the first grad outputs:
         auto v = torch::ones_like(psi, options);
         v.requires_grad_(true);
@@ -200,7 +201,7 @@ torch::Tensor JacobianCalculator::jacobian_forward(
             ).front();
 
 
-            PLOG_INFO << "Update " << output.sizes();
+            // PLOG_INFO << "Update " << output.sizes();
             // Put it into the jacobian:
             jacobian_flat.index_put_({Slice(), i_column}, output);
             i_column ++;
@@ -210,9 +211,75 @@ torch::Tensor JacobianCalculator::jacobian_forward(
     return jacobian_flat;
 }
 
+torch::Tensor JacobianCalculator::jacobian_forward_weight(torch::Tensor psi,
+    torch::Tensor x_current, ManyBodyWavefunction wavefunction, int64_t weight_index){
+
+
+    // Need to interpolate to the correct layer of the wavefunction:
+    size_t loop_layer = 0;
+    int64_t layer_index = 0;
+
+    int64_t running_index = 0;
+    // Loop over the global index until it's found:
+    for (size_t i_layer = 0; i_layer < flat_shapes.size(); i_layer ++){
+        if (weight_index < running_index + flat_shapes[i_layer]){
+            // This is the right layer
+            loop_layer = i_layer;
+            // And this will be the position within this layer:
+            layer_index = weight_index - running_index;
+            break;
+        }
+        else{
+            running_index += flat_shapes[i_layer];
+        }
+    }
+
+
+
+    // This is the first grad outputs:
+    auto v = torch::ones_like(psi, options);
+    v.requires_grad_(true);
+
+    // Construction of the second grad outputs:
+    // auto u = torch::ones({}, options);
+    auto u = torch::zeros({flat_shapes[loop_layer]}, options);
+    // Set one parameter non-zero:
+    u.index_put_({layer_index}, 1.0);
+
+    u = u.reshape(full_shapes[loop_layer]);
+
+    // Get just this parameter:
+    auto this_param = wavefunction->parameters()[loop_layer];
+
+    // First pass backwards:
+    auto vjp = torch::autograd::grad(
+        {psi},          // outputs
+        {this_param},   // inputs
+        {v},            // grad_outputs
+        true,           // retain graph
+        true,           // create_graph
+        false           // allow_unused
+    );
+
+    // Second backwards pass:
+    auto output = torch::autograd::grad(
+        {vjp},      // outputs
+        {v},        // inputs
+        {u},        // grad_outputs
+        true,       // retain graph
+        true,       // create_graph
+        false       // allow_unused
+    ).front();
+
+    return output;
+
+}
+
 
 torch::Tensor JacobianCalculator::batch_jacobian_forward(
     torch::Tensor x_current, ManyBodyWavefunction wavefunction){
+
+    auto n_walkers = x_current.sizes()[0];
 
     // First, make n copies of the wavefunction:
 
@@ -223,26 +290,51 @@ torch::Tensor JacobianCalculator::batch_jacobian_forward(
         set_weights(wf_copies[i], wavefunction->parameters());
 
     }
+    // Forward pass
+    auto psi = wavefunction(x_current);
 
-    // Next, chunk the inputs:
-    auto input_chunks = torch::chunk(x_current, concurrency);
 
+    // Compute just the first column:
 
-    // Prepare a list of jacobian chunks for output:
-    std::vector<torch::Tensor> jac_chunks;
-    jac_chunks.resize(concurrency);
+    auto first_column = jacobian_forward_weight(psi, x_current, wavefunction, 0);
 
-    size_t i_chunk;
+    PLOG_INFO << first_column[0];
+    PLOG_INFO << first_column[1];
 
-    #pragma omp parallel for
-    for (i_chunk = 0; i_chunk < concurrency; i_chunk ++){
-        jac_chunks[i_chunk] = jacobian_forward(input_chunks[i_chunk], wf_copies[i_chunk]);
+    auto jacobian_flat = torch::zeros({n_walkers, n_parameters}, options);
+
+    // Loop over every parameter:
+    std::vector<torch::Tensor> jacobian_columns;
+    #pragma omp parallel for num_threads(concurrency)
+    for (int64_t i_param = 0; i_param < n_parameters; i_param++){
+        size_t wf_index = i_param % n_wavefunctions;
+        // Forward pass
+        auto psi = wf_copies[wf_index](x_current);
+
+        jacobian_flat.index_put_(
+            {Slice(), i_param},
+            jacobian_forward_weight(psi, x_current, wf_copies[wf_index], i_param) );
     }
 
 
-    // Stack up the jacobian chunks:
-    auto jacobian_full =  torch::cat(jac_chunks, 0);
+    //
+    // // Next, chunk the inputs:
+    // auto input_chunks = torch::chunk(x_current, concurrency);
+    //
+    //
+    // // Prepare a list of jacobian chunks for output:
+    // std::vector<torch::Tensor> jac_chunks;
+    // jac_chunks.resize(concurrency);
+    //
+    // int64_t i_chunk;
+    //
+    // #pragma omp parallel for
+    // for (i_chunk = 0; i_chunk < concurrency; i_chunk ++){
+    //     jac_chunks[i_chunk] = jacobian_forward(input_chunks[i_chunk], wf_copies[i_chunk]);
+    // }
+    //
+    //
+    return jacobian_flat;
 
-    return jacobian_full;
-
+    // return torch::Tensor();
 }
