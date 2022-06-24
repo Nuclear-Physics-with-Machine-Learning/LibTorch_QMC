@@ -16,8 +16,8 @@
 struct ManyBodyWavefunctionImpl : torch::nn::Module {
     ManyBodyWavefunctionImpl(
         ManyBodyWavefunctionConfig _cfg,
-        torch::TensorOptions options,
-        int64_t n_particles);
+        torch::TensorOptions options
+    );
 
     torch::Tensor forward(torch::Tensor x);
 

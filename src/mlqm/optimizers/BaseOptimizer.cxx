@@ -12,7 +12,8 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
       options(opts),
       sampler(cfg.sampler, opts),
       hamiltonian(cfg.hamiltonian, opts),
-      grad_calc(opts)
+      grad_calc(opts),
+      jac_calc(opts)
 {
 
     size = 1;
@@ -60,22 +61,17 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     }
 
     // Create a model:
-    wavefunction = ManyBodyWavefunction(cfg.wavefunction, options, cfg.sampler.n_particles);
+    wavefunction = ManyBodyWavefunction(cfg.wavefunction, options);
     wavefunction -> to(options.device());
     wavefunction -> to(torch::kFloat64);
 
-    adaptive_wavefunction = ManyBodyWavefunction(cfg.wavefunction, options, cfg.sampler.n_particles);
+    adaptive_wavefunction = ManyBodyWavefunction(cfg.wavefunction, options);
     adaptive_wavefunction -> to(options.device());
     adaptive_wavefunction -> to(torch::kFloat64);
 
-    // Initialize the copies of the wavefunction used in the batch_jacobian:
 
-    // don't worry about setting parameters yet.
-    for (size_t i = 0; i < config.n_concurrent_jacobian; i ++){
-        wf_copies.push_back(ManyBodyWavefunction(config.wavefunction, options, config.sampler.n_particles));
-        wf_copies.back() -> to(options.device());
-        wf_copies.back() -> to(torch::kFloat64);
-    }
+    // Set up the concurrency in the jacobian calculator:
+    jac_calc.set_parallelization(wavefunction, config.n_concurrent_jacobian);
 
 
     auto params = wavefunction -> named_parameters();
@@ -108,7 +104,30 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     PLOG_INFO << "Done initial equilibration, acceptance = " << acceptance;
 
 
+    // Here, temporarily, benchmark the jacobian calculations:
+    auto start = std::chrono::high_resolution_clock::now();
+    auto jac_rev = jac_calc.jacobian_reverse(input, wavefunction);
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli>  duration = stop - start;
+    PLOG_INFO << "Reverse Jacobian time: " << duration.count() << "[ms]";
 
+    start = std::chrono::high_resolution_clock::now();
+    auto jac_rev_batched = jac_calc.batch_jacobian_reverse(input, wavefunction);
+    stop = std::chrono::high_resolution_clock::now();
+    duration = stop - start;
+    PLOG_INFO << "Batched reverse Jacobian time: " << duration.count() << "[ms]";
+
+    start = std::chrono::high_resolution_clock::now();
+    auto jac_fwd = jac_calc.jacobian_forward(input, wavefunction);
+    stop = std::chrono::high_resolution_clock::now();
+    duration = stop - start;
+    PLOG_INFO << "Forward Jacobian time: " << duration.count() << "[ms]";
+
+    start = std::chrono::high_resolution_clock::now();
+    auto jac_fwd_batched = jac_calc.batch_jacobian_forward(input, wavefunction);
+    stop = std::chrono::high_resolution_clock::now();
+    duration = stop - start;
+    PLOG_INFO << "Batched forward Jacobian time: " << duration.count() << "[ms]";
 
 }
 
@@ -117,69 +136,10 @@ torch::Tensor BaseOptimizer::equilibrate(int64_t n_iterations){
     return acceptance;
 }
 
-/*
-torch::Tensor BaseOptimizer::jacobian(torch::Tensor x_current, ManyBodyWavefunction wavefunction){
-
-    // This function goes through the jacobian like so:
-    // -for every walker, compute the gradient of the wavefunction output
-    // with respect to the parameters.
-    // Then, compactify (real word?) the gradients into a flat tensor.
-    // Return the tensor (shape of [n_walkers, n_parameters])
-
-    // How many walkers?
-    auto n_walkers = x_current.sizes()[0];
-
-
-    // Compute the value of the wavefunction for all walkers:
-    auto psi = wavefunction(x_current);
-
-    // psi = psi.repeat(n_walkers);
-    auto psi_v = torch::chunk(psi, n_walkers);
-
-
-    // Construct a series of grad outputs:
-    auto outputs = torch::eye(n_walkers, options);
-
-    // Flatten and chunk it:
-    auto output_list = torch::chunk(torch::flatten(outputs), n_walkers);
-
-
-
-    auto jacobian_flat = torch::zeros({n_walkers, n_parameters}, options);
-
-    #pragma omp parallel for
-    for (int64_t i_walker = 0; i_walker < n_walkers; ++i_walker){
-
-        // Compute the gradients:
-        auto jacobian_list = torch::autograd::grad(
-            {psi_v[i_walker]}, // outputs
-            wavefunction->parameters(), //inputs
-            {output_list[i_walker]}, // grad_outputs
-            true,  // retain graph
-            false, // create_graph
-            false  // allow_unused
-        );
-        std::vector<torch::Tensor> flat_this_jac;
-        for(auto & grad : jacobian_list) flat_this_jac.push_back(grad.flatten());
-
-        // Flatten the jacobian and put it into the larger matrix.
-        // Note the normalization by wavefunction happens here too.
-        jacobian_flat.index_put_({i_walker, Slice()}, torch::cat(flat_this_jac) / psi_v[i_walker]);
-
-    }
-
-
-
-    return jacobian_flat;
-
-}
-*/
-
-
 torch::Tensor BaseOptimizer::batch_jacobian(
     torch::Tensor x_current, ManyBodyWavefunction wavefunction){
     // First, make n copies of the wavefunction:
-
+/*
     size_t n_wavefunctions = wf_copies.size();
     #pragma omp parallel for
     for (size_t i = 0; i < n_wavefunctions; i ++){
@@ -208,11 +168,14 @@ torch::Tensor BaseOptimizer::batch_jacobian(
     auto jacobian_full =  torch::cat(jac_chunks, 0);
 
     return jacobian_full;
-
+*/
+    return torch::Tensor();
 }
 
 
 torch::Tensor BaseOptimizer::jacobian(torch::Tensor x_current, ManyBodyWavefunction wavefunction){
+    /*
+
     // This function goes through the jacobian like so:
     // Duplicate the input by n_parameters
     // How many walkers?
@@ -259,6 +222,8 @@ torch::Tensor BaseOptimizer::jacobian(torch::Tensor x_current, ManyBodyWavefunct
     }
 
     return jacobian_flat;
+    */
+    return torch::Tensor();
 
 }
 
@@ -516,22 +481,6 @@ void BaseOptimizer::apply_gradients(
 
 }
 
-void BaseOptimizer::set_weights(ManyBodyWavefunction & wf,
-    const std::vector<torch::Tensor> & weights){
-
-    c10::InferenceMode guard(true);
-
-    auto current_params = wf->parameters();
-
-    // Even though it's a flat optimization, we recompute the energy to get the overlap too:
-    for (size_t i_layer = 0; i_layer < full_shapes.size(); i_layer ++){
-
-        // Bit of a crappy way to do this, may need to optimize later
-        wf -> parameters()[i_layer] += weights[i_layer] - current_params[i_layer];
-        // PLOG_INFO << "  set to :" << adaptive_wavefunction->parameters()[i_layer];
-    }
-
-}
 
 torch::Tensor BaseOptimizer::compute_gradients(
     torch::Tensor dpsi_i,

@@ -17,6 +17,7 @@
 
 #include "Accumulator.h"
 #include "GradientCalculator.h"
+#include "JacobianCalculator.h"
 
 class BaseOptimizer
 {
@@ -147,10 +148,6 @@ public:
      */
     void apply_gradients(const std::vector<torch::Tensor> & gradients);
 
-
-    void set_weights(ManyBodyWavefunction & wf,
-        const std::vector<torch::Tensor> & weights);
-
 private:
 
     // Overall configuration:
@@ -168,8 +165,6 @@ private:
     // The trial wavefunction for update optimization:
     ManyBodyWavefunction adaptive_wavefunction = nullptr;
 
-    // Vector of wavefunctions used to parallelize the jacobian.
-    std::vector<ManyBodyWavefunction> wf_copies;
 
     // The hamiltonian class
     NuclearHamiltonian hamiltonian;
@@ -179,6 +174,9 @@ private:
 
     // Way to accumlate and all reduce objects:
     Accumulator estimator, re_estimator;
+
+    // Tool for computing jacobians:
+    JacobianCalculator jac_calc;
 
     // Global MPI size
     int size;

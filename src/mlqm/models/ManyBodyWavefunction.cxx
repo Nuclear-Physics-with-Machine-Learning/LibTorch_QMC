@@ -1,6 +1,8 @@
 #include "ManyBodyWavefunction.h"
 
-ManyBodyWavefunctionImpl::ManyBodyWavefunctionImpl(ManyBodyWavefunctionConfig _cfg, torch::TensorOptions options, int64_t n_particles)
+ManyBodyWavefunctionImpl::ManyBodyWavefunctionImpl(
+    ManyBodyWavefunctionConfig _cfg, 
+    torch::TensorOptions options)
     : cfg(_cfg),
       dsc(_cfg.correlator_config, options),
       opts(options)
