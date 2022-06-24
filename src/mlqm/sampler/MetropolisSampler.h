@@ -45,7 +45,7 @@ private:
 
     SamplerConfig cfg;
 
-    torch::TensorOptions opts;
+    torch::TensorOptions opts, kick_opts;
 
     void init_possilble_swaps();
 

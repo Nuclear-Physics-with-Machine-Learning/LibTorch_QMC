@@ -85,6 +85,11 @@ int main(int argc, char* argv[]) {
 
   // Configure a logger:
 
+  // Set number of threads
+  // at::set_num_interop_threads(cfg.sampler.n_particles);
+  // at::set_num_threads(cfg.sampler.n_particles);
+
+
   // TensorBoardLogger logger(cfg.out_dir);
 
   PLOG_INFO << "Device selected: " << options.device();

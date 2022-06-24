@@ -2,19 +2,20 @@
 
 
 NuclearHamiltonian::NuclearHamiltonian(
-    NuclearHamiltonianConfig config, torch::TensorOptions options) : 
+    NuclearHamiltonianConfig config, torch::TensorOptions options) :
     cfg(config)
 {_opts = options;}
 
 torch::Tensor NuclearHamiltonian::energy(
     ManyBodyWavefunction wavefunction,
     torch::Tensor inputs, // torch::Tensor spin, torch::Tensor isospin
-    torch::Tensor & energy_jf, 
-    torch::Tensor & ke_jf, 
-    torch::Tensor & ke_direct, 
-    torch::Tensor & pe, 
+    torch::Tensor & energy_jf,
+    torch::Tensor & ke_jf,
+    torch::Tensor & ke_direct,
+    torch::Tensor & pe,
     torch::Tensor & w_of_x)
 {
+
     // Get the necessary derivatives:
     auto derivatives = compute_derivatives(wavefunction, inputs);
 

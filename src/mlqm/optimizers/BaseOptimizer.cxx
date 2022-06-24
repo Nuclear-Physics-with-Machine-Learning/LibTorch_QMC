@@ -416,8 +416,8 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
             estimator.accumulate("ke_jf",      torch::sum(obs_ke_jf));
             estimator.accumulate("ke_direct",  torch::sum(obs_ke_direct));
             estimator.accumulate("pe",         torch::sum(obs_pe));
-            estimator.accumulate("acceptance", acceptance);
-            estimator.accumulate("r",          r);
+            estimator.accumulate("acceptance", torch::mean(acceptance));
+            estimator.accumulate("r",          torch::mean(r));
             estimator.accumulate("dpsi_i",     dpsi_i);
             estimator.accumulate("dpsi_i_EL",  dpsi_i_EL);
             estimator.accumulate("dpsi_ij",    dpsi_ij);
@@ -736,6 +736,7 @@ std::map<std::string, torch::Tensor> BaseOptimizer::flat_optimizer(
         c10::InferenceMode guard(true);
 
         // Even though it's a flat optimization, we recompute the energy to get the overlap too:
+
         for (size_t i_layer = 0; i_layer < original_weights.size(); i_layer ++){
 
             // Bit of a crappy way to do this, may need to optimize later
