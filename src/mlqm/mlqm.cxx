@@ -84,14 +84,16 @@ int main(int argc, char* argv[]) {
   }
 
   // Configure a logger:
-  
+  // at::set_num_interop_threads(cfg.sampler.n_particles);
+  // at::set_num_threads(cfg.sampler.n_particles);
+
   // TensorBoardLogger logger(cfg.out_dir);
 
   PLOG_INFO << "Device selected: " << options.device();
 
   // Create the base algorithm:
   BaseOptimizer optim(cfg, options);
- 
+
   // Run the optimization:
   for (int64_t iteration = 0; iteration < cfg.n_iterations; iteration ++){
       auto start = std::chrono::high_resolution_clock::now();
