@@ -99,6 +99,12 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
 
 
 
+    for (size_t i = 0; i < 15; i ++){
+        auto metrics = sr_step();
+        PLOG_INFO << metrics;
+    }
+
+
 }
 
 torch::Tensor BaseOptimizer::equilibrate(int64_t n_iterations){
@@ -127,7 +133,7 @@ torch::Tensor BaseOptimizer::jacobian(torch::Tensor x_current, ManyBodyWavefunct
 
 
     // Construct a series of grad outputs:
-    auto outputs = torch::eye(n_walkers);
+    auto outputs = torch::eye(n_walkers, options);
 
     // Flatten and chunk it:
     auto output_list = torch::chunk(torch::flatten(outputs), n_walkers);
@@ -150,6 +156,7 @@ torch::Tensor BaseOptimizer::jacobian(torch::Tensor x_current, ManyBodyWavefunct
         );
         std::vector<torch::Tensor> flat_this_jac;
         for(auto & grad : jacobian_list) flat_this_jac.push_back(grad.flatten());
+
         // Flatten the jacobian and put it into the larger matrix.
         // Note the normalization by wavefunction happens here too.
         jacobian_flat.index_put_({i_walker, Slice()}, torch::cat(flat_this_jac) / psi_v[i_walker]);
@@ -345,6 +352,7 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
 std::map<std::string, torch::Tensor> BaseOptimizer::sr_step(){
     std::map<std::string, torch::Tensor> metrics = {};
 
+
     // We do a thermalization step again:
     equilibrate(config.sampler.n_thermalize);
 
@@ -386,13 +394,11 @@ std::map<std::string, torch::Tensor> BaseOptimizer::sr_step(){
     std::vector<torch::Tensor> delta_p;
     auto opt_metrics = compute_updates_and_metrics(current_psi, delta_p, next_energy);
 
-    ///TODO: HERE
     metrics.insert(opt_metrics.begin(), opt_metrics.end());
     // Compute the ratio of the previous energy and the current energy
     auto energy_diff = predicted_energy - estimator["energy"];
     metrics["energy/energy_diff"] = energy_diff;
 
-    ///TODO HERE
     // And apply them to the wave function:
     apply_gradients(delta_p);
 
@@ -622,11 +628,10 @@ std::map<std::string, torch::Tensor> BaseOptimizer::flat_optimizer(
         c10::InferenceMode guard(true);
 
         // Even though it's a flat optimization, we recompute the energy to get the overlap too:
-        for (int64_t i_layer = 0; i_layer < original_weights.size(); i_layer ++){
 
-            // PLOG_INFO << "original " << i_layer << ": " << original_weights[i_layer];
-            // PLOG_INFO << "  gradient " << i_layer << ": " << gradients[i_layer];
-            // PLOG_INFO << "  initial value :" << adaptive_wavefunction->parameters()[i_layer];
+        for (size_t i_layer = 0; i_layer < original_weights.size(); i_layer ++){
+
+
             // Bit of a crappy way to do this, may need to optimize later
             adaptive_wavefunction -> parameters()[i_layer] +=
                 original_weights[i_layer] - adaptive_params[i_layer] + gradients[i_layer];
