@@ -7,62 +7,10 @@
 #include "sampler/sampler.h"
 #include "hamiltonians/NuclearHamiltonian.h"
 
-static auto default_config = R"(
-{   
-    "hamiltonian": {
-        "M" : 1.0,
-        "HBAR" : 1.0
-    },
-    "sampler": {
-        "n_walkers" : 10,
-        "n_particles" : 16,
-        "n_dim" : 3,
-        "n_spin_up" : 0,
-        "n_protons" : 0,
-        "use_spin" : false,
-        "use_isospin" : false,
-        "kick_mean" : 0.0,
-        "kick_std" : 0.0
-    },
-    "wavefunction": {
-        "spatial_config": {
-            "n_input" : 3,
-            "n_output" : 32,
-            "n_layers" : 4,
-            "n_filters_per_layer" : 32,
-            "bias" : false,
-            "residual" : false
-        },
-        "correlator_config" : {
-            "individual_config" : {
-                "n_input" : 3,
-                "n_output" : 32,
-                "n_layers" : 4,
-                "n_filters_per_layer" : 32,
-                "bias" : false,
-                "residual" : false
-            },
-            "aggregate_config"  : {
-                "n_input" : 32,
-                "n_output" : 1,
-                "n_layers" : 4,
-                "n_filters_per_layer" : 32,
-                "bias" : false,
-                "residual" : false
-            },
-            "confinement"       : 0.1,
-            "latent_space"      : 32
-        }
-    }
-}
-)"_json;
-
-
+#include "optimizers/JacobianCalculator.h"
 
 TEST_CASE( "Sampler size is correct", "[sampler]"){
     Config cfg;
-    from_json(default_config, cfg);
-
 
     auto options = torch::TensorOptions()
         .dtype(torch::kFloat64)
@@ -87,11 +35,64 @@ TEST_CASE( "Sampler size is correct", "[sampler]"){
     REQUIRE (x.sizes()[2] == cfg.sampler.n_dim);
 }
 
+TEST_CASE(" Wavefunction works", "[wavefunction"){
+
+    Config cfg;
+
+    // We don't want to over-complicate the computations here, so simplify a bit:
+    cfg.sampler.n_walkers = 50;
+    cfg.wavefunction.correlator_config.individual_config.n_layers = 2;
+    cfg.wavefunction.correlator_config.individual_config.n_filters_per_layer = 8;
+
+    cfg.wavefunction.correlator_config.aggregate_config.n_layers = 2;
+    cfg.wavefunction.correlator_config.aggregate_config.n_filters_per_layer = 8;
+
+    cfg.wavefunction.correlator_config.latent_space = 8;
+
+    cfg.validate_config();
+
+    auto options = torch::TensorOptions()
+        .dtype(torch::kFloat64)
+        .layout(torch::kStrided);
+
+    // Default device?
+    // torch::Device device(torch::kCPU);
+    if (torch::cuda::is_available()) {
+        options = options.device(torch::kCUDA);
+    }
+
+    // Turn off inference mode at the highest level
+    c10::InferenceMode guard(false);
+
+    // Create a sampler:
+    MetropolisSampler sampler(cfg.sampler, options);
+
+    JacobianCalculator jac_calc(options);
+    ManyBodyWavefunction wavefunction = ManyBodyWavefunction(
+        cfg.wavefunction, options);
+    wavefunction -> to(torch::kDouble);
+    wavefunction -> to(options.device());
+
+    auto psi = wavefunction(sampler.sample_x());
+
+
+}
+
+/*
+
 TEST_CASE( "Differentiation matches numerical approximations", "[wavefunction]"){
 
 
     Config cfg;
-    from_json(default_config, cfg);
+
+    // We don't want to over-complicate the computations here, so simplify a bit:
+    cfg.sampler.n_particles = 50;
+    cfg.wavefunction.correlator_config.individual_config.n_layers = 2;
+    cfg.wavefunction.correlator_config.individual_config.n_filters_per_layer = 8;
+
+    cfg.wavefunction.correlator_config.aggregate_config.n_layers = 2;
+    cfg.wavefunction.correlator_config.aggregate_config.n_filters_per_layer = 8;
+
 
     auto options = torch::TensorOptions()
         .dtype(torch::kFloat64)
@@ -112,7 +113,8 @@ TEST_CASE( "Differentiation matches numerical approximations", "[wavefunction]")
     NuclearHamiltonian h(cfg.hamiltonian, options);
 
 
-    ManyBodyWavefunction wavefunction = ManyBodyWavefunction(cfg.wavefunction, options, cfg.sampler.n_particles);
+    ManyBodyWavefunction wavefunction = ManyBodyWavefunction(
+        cfg.wavefunction, options);
     wavefunction -> to(torch::kDouble);
     wavefunction -> to(options.device());
 
@@ -169,4 +171,88 @@ TEST_CASE( "Differentiation matches numerical approximations", "[wavefunction]")
         }
     }
 
+    BENCHMARK("Hamiltonian Derivatives"){
+        return h.compute_derivatives(wavefunction, x)
+    }
+
 }
+*/
+
+
+TEST_CASE("Jacobian Calculation matches numerical approximations.", "[jacobian]"){
+
+
+    Config cfg;
+
+    // We don't want to over-complicate the computations here, so simplify a bit:
+    cfg.sampler.n_walkers = 5;
+    cfg.wavefunction.correlator_config.individual_config.n_layers = 2;
+    cfg.wavefunction.correlator_config.individual_config.n_filters_per_layer = 3;
+
+    cfg.wavefunction.correlator_config.aggregate_config.n_layers = 2;
+    cfg.wavefunction.correlator_config.aggregate_config.n_filters_per_layer = 3;
+
+    cfg.wavefunction.correlator_config.latent_space = 3;
+    cfg.wavefunction.mean_subtract = false;
+    cfg.validate_config();
+
+
+    auto options = torch::TensorOptions()
+        .dtype(torch::kFloat64)
+        .layout(torch::kStrided);
+
+    // Default device?
+    // torch::Device device(torch::kCPU);
+    if (torch::cuda::is_available()) {
+        options = options.device(torch::kCUDA);
+    }
+
+    // Turn off inference mode at the highest level
+    c10::InferenceMode guard(false);
+
+    // Create a sampler:
+    MetropolisSampler sampler(cfg.sampler, options);
+
+    JacobianCalculator jac_calc(options);
+    ManyBodyWavefunction wavefunction = ManyBodyWavefunction(
+        cfg.wavefunction, options);
+    wavefunction -> to(torch::kDouble);
+    wavefunction -> to(options.device());
+
+    // Default to parallelization of 1, can increase later
+    jac_calc.set_parallelization(wavefunction, 1);
+
+    auto x = sampler.sample_x();
+
+    float KICK_SIZE = 1e-3;
+
+    // The numerical jacobian is what we benchmark against:
+    auto jac_numerical = jac_calc.numerical_jacobian(x, wavefunction, KICK_SIZE);
+
+    std::cout << jac_numerical << std::endl;
+
+    auto jac_rev = jac_calc.jacobian_reverse(x, wavefunction);
+
+    REQUIRE(jac_numerical.sizes() == jac_rev.sizes());
+
+    std::cout << jac_rev / (jac_numerical+1e-16) << std::endl;;
+    std::cout << jac_numerical.sizes() << std::endl;;
+
+    // Find the largerst absolute difference between the numerical and analytical deriv:
+    auto diff = torch::max(torch::abs(jac_numerical - jac_rev));
+    std::cout << "diff: " << diff << std::endl;
+    auto pass = (diff < 2*1e-3).to(torch::kBool).cpu();
+    // REQUIRE(pass.data_ptr<bool>()[0]);
+
+    // auto jac_rev_batched = jac_calc.batch_jacobian_reverse(input, wavefunction);
+
+    auto jac_fwd = jac_calc.jacobian_forward(x, wavefunction);
+    std::cout << jac_rev / (jac_fwd+1e-16) << std::endl;;
+
+    // // auto jac_fwd_batched = jac_calc.batch_jacobian_forward(input, wavefunction);
+
+
+}
+
+
+

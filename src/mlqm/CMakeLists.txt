@@ -104,8 +104,8 @@ install(TARGETS mlqm
     )
 
 # Add a test executable:
-# add_executable(tests tests.cxx)
-# target_link_libraries(tests PRIVATE Catch2::Catch2WithMain libmlqm)
+add_executable(tests tests.cxx)
+target_link_libraries(tests PRIVATE Catch2::Catch2WithMain libmlqm)
 
 # # This is from the docs ...
 # # These tests need their own main

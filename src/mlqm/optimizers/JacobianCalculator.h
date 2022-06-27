@@ -97,7 +97,7 @@ public:
      *
      * @return     Jacobian of walkers, WF weights
      */
-    torch::Tensor numerical_jacobian(torch::Tensor x_current, ManyBodyWavefunction wavefunction);
+    torch::Tensor numerical_jacobian(torch::Tensor x_current, ManyBodyWavefunction wavefunction, float kick_size=1e-4);
 
 private:
 

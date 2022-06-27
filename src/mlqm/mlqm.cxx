@@ -70,19 +70,8 @@ int main(int argc, char* argv[]) {
 
   // This logic here ensures that the 
   // wavefunctions get populated properly with input/output dimensions.
-  
-  // input to individual-particle correlator must == n_dim of each particle
-  cfg.wavefunction.correlator_config.individual_config.n_input = cfg.sampler.n_dim;
-  // Output of individual-particle must equal latent size
-  cfg.wavefunction.correlator_config.individual_config.n_output 
-     = cfg.wavefunction.correlator_config.latent_space;
-  // input to individual-particle correlator must == latent_space
-  cfg.wavefunction.correlator_config.aggregate_config.n_input 
-    = cfg.wavefunction.correlator_config.latent_space;
-  // Input to spatial configs in the Slater matrix must == n_dim
-  cfg.wavefunction.spatial_config.n_input = cfg.sampler.n_dim;
-  // Output to same config must equal 1
-  cfg.wavefunction.spatial_config.n_output = 1;
+  cfg.validate_config();
+ 
   
   json resolved_json = cfg;
   PLOG_INFO << "Config: " <<  resolved_json.dump(2);

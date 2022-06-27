@@ -339,9 +339,8 @@ torch::Tensor JacobianCalculator::batch_jacobian_forward(
     // return torch::Tensor();
 }
 
-#define KICK_SIZE 1e-3
 torch::Tensor JacobianCalculator::numerical_jacobian(
-    torch::Tensor x_current, ManyBodyWavefunction wavefunction){
+    torch::Tensor x_current, ManyBodyWavefunction wavefunction, float kick_size){
 
     // No need for gradients here
     c10::InferenceMode guard(true);
@@ -352,10 +351,11 @@ torch::Tensor JacobianCalculator::numerical_jacobian(
     // How many walkers?
     auto n_walkers = x_current.sizes()[0];
 
-    // Compute the value of the wavefunction for all walkers:
+    // // Compute the value of the wavefunction for all walkers:
     auto psi = wavefunction(x_current);
 
     auto jacobian_flat = torch::zeros({n_walkers, n_parameters}, options);
+
 
     int64_t i_column = 0;
 
@@ -374,20 +374,33 @@ torch::Tensor JacobianCalculator::numerical_jacobian(
             
             // Update the weight of this particular layer
             // Kick it up:
-            wavefunction -> parameters()[i_layer].flatten()[i_weight] += KICK_SIZE;
+            std::cout << "Param " << i_column << " from " << wavefunction -> parameters()[i_layer].flatten()[i_weight];
+            wavefunction -> parameters()[i_layer].flatten()[i_weight] += kick_size;
+            std::cout << " to " << wavefunction -> parameters()[i_layer].flatten()[i_weight] <<"\n";
 
+            std::cout << "  psi from " << psi << " to ";
             auto psi_up = wavefunction(x_current);
+            std::cout << psi_up <<"\n";
+            wavefunction -> parameters()[i_layer].flatten()[i_weight] += kick_size;
+            auto psi_up_up = wavefunction(x_current);
 
             // Now, kick it down (undo the first kick and add negative kick):
-            wavefunction -> parameters()[i_layer].flatten()[i_weight] += -2.*KICK_SIZE;
+            wavefunction -> parameters()[i_layer].flatten()[i_weight] += -3.*kick_size;
 
             auto psi_down = wavefunction(x_current);
+            wavefunction -> parameters()[i_layer].flatten()[i_weight] -= kick_size;
+            auto psi_down_down = wavefunction(x_current);
 
             // Undo all kicks before the next iteration:
-            wavefunction -> parameters()[i_layer].flatten()[i_weight] += KICK_SIZE;
+            wavefunction -> parameters()[i_layer].flatten()[i_weight] += 2*kick_size;
 
 
-            auto this_jacobian_column = (psi_up - psi_down) / (2.*KICK_SIZE);
+            auto this_jacobian_column = (
+                    ( 1./12) * psi_down_down + 
+                    (-2./3.) * psi_down +
+                    ( 2./3.) * psi_up + 
+                    (-1./12) * psi_up_up
+                ) / (kick_size);
 
             // PLOG_INFO << "Update " << output.sizes();
             // Put it into the jacobian:
