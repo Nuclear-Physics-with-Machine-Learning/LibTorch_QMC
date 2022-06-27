@@ -26,18 +26,6 @@ public:
     ~BaseOptimizer(){}
 
     /**
-     * @brief      Compute jacobian of the wavefunction parameters for each configuration
-     *
-     * @param[in]  x_current     current configurations
-     * @param[in]  wavefunction  The wavefunction
-     *
-     * @return     jacobian matrix of shape [n_walkers, n_parameters]
-     */
-    torch::Tensor jacobian(torch::Tensor x_current, ManyBodyWavefunction wavefunction);
-
-    torch::Tensor batch_jacobian(torch::Tensor x_current, ManyBodyWavefunction wavefunction);
-
-    /**
      * @brief      Calculates the O observables. (dpsi_i, dpsi_ij, dpsi_i_EL)
      *
      * @param[in]  flattened_jacobian  The flattened jacobian

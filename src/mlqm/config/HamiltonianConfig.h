@@ -24,6 +24,12 @@ struct NuclearHamiltonianConfig{
     float  HBAR;
     float  OMEGA;
 
+    NuclearHamiltonianConfig(){
+        M = 1.0;
+        HBAR = 1.0;
+        OMEGA = 1.0;
+    }
+
 };
 
 void to_json(json& j, const NuclearHamiltonianConfig& s);

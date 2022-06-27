@@ -86,8 +86,18 @@ public:
     /**
      * @brief Compute one column of the jacobian function (one parameter, all walkers)
      */
-    torch::Tensor jacobian_forward_weight( torch::Tensor psi,
+    torch::Tensor jacobian_forward_weight(torch::Tensor psi,
         torch::Tensor x_current, ManyBodyWavefunction wavefunction, int64_t weight_index);
+
+    /**
+     * @brief      Compute the jacobian numerically.  Meant for checking.
+     *
+     * @param[in]  x_current     The x current
+     * @param[in]  wavefunction  The wavefunction
+     *
+     * @return     Jacobian of walkers, WF weights
+     */
+    torch::Tensor numerical_jacobian(torch::Tensor x_current, ManyBodyWavefunction wavefunction);
 
 private:
 

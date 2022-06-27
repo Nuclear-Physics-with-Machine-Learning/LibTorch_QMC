@@ -23,6 +23,14 @@ struct Config{
     int n_iterations;
     std::string out_dir;
     size_t n_concurrent_jacobian;
+
+    Config(){
+        delta = 0.01;
+        epsilon = 0.001;
+        n_iterations = 50;
+        n_concurrent_jacobian = 1;
+        out_dir = "";
+    }
 };
 
 void to_json(json& j, const Config& s);

@@ -11,7 +11,7 @@ void to_json(json& j, const NuclearHamiltonianConfig& hc){
 
 void from_json(const json& j, NuclearHamiltonianConfig& hc ){
 
-    j.at("M").get_to(hc.M);
-    j.at("HBAR").get_to(hc.HBAR);
-    j.at("OMEGA").get_to(hc.OMEGA);
+    if (j.contains("M")) j.at("M").get_to(hc.M);
+    if (j.contains("HBAR")) j.at("HBAR").get_to(hc.HBAR);
+    if (j.contains("OMEGA")) j.at("OMEGA").get_to(hc.OMEGA);
 }

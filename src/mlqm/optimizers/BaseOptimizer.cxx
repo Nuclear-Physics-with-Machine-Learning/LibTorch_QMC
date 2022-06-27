@@ -125,17 +125,30 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     duration = stop - start;
     PLOG_INFO << "Batched reverse Jacobian time: " << duration.count() << "[ms]";
 
-    // start = std::chrono::high_resolution_clock::now();
-    // auto jac_fwd = jac_calc.jacobian_forward(input, wavefunction);
-    // stop = std::chrono::high_resolution_clock::now();
-    // duration = stop - start;
-    // PLOG_INFO << "Forward Jacobian time: " << duration.count() << "[ms]";
-
     start = std::chrono::high_resolution_clock::now();
-    auto jac_fwd_batched = jac_calc.batch_jacobian_forward(input, wavefunction);
+    auto jac_numerical = jac_calc.numerical_jacobian(input, wavefunction);
     stop = std::chrono::high_resolution_clock::now();
     duration = stop - start;
-    PLOG_INFO << "Batched forward Jacobian time: " << duration.count() << "[ms]";
+    PLOG_INFO << "Numerical Jacobian time: " << duration.count() << "[ms]";
+
+    PLOG_DEBUG << "First few Jacobian entries: ";
+    PLOG_DEBUG << "  jac_numerical[0][0]: " << jac_numerical[0][0];
+    PLOG_DEBUG << "  jac_numerical[1][0]: " << jac_numerical[1][0];
+    PLOG_DEBUG << "  jac_numerical[0][1]: " << jac_numerical[0][1];
+    PLOG_DEBUG << "  jac_numerical[1][1]: " << jac_numerical[1][1];
+
+
+    start = std::chrono::high_resolution_clock::now();
+    auto jac_fwd = jac_calc.jacobian_forward(input, wavefunction);
+    stop = std::chrono::high_resolution_clock::now();
+    duration = stop - start;
+    PLOG_INFO << "Forward Jacobian time: " << duration.count() << "[ms]";
+
+    // start = std::chrono::high_resolution_clock::now();
+    // auto jac_fwd_batched = jac_calc.batch_jacobian_forward(input, wavefunction);
+    // stop = std::chrono::high_resolution_clock::now();
+    // duration = stop - start;
+    // PLOG_INFO << "Batched forward Jacobian time: " << duration.count() << "[ms]";
 
 }
 
@@ -144,96 +157,6 @@ torch::Tensor BaseOptimizer::equilibrate(int64_t n_iterations){
     return acceptance;
 }
 
-torch::Tensor BaseOptimizer::batch_jacobian(
-    torch::Tensor x_current, ManyBodyWavefunction wavefunction){
-    // First, make n copies of the wavefunction:
-/*
-    size_t n_wavefunctions = wf_copies.size();
-    #pragma omp parallel for
-    for (size_t i = 0; i < n_wavefunctions; i ++){
-        // Set the parameters:
-        set_weights(wf_copies[i], wavefunction->parameters());
-
-    }
-
-    // Next, chunk the inputs:
-    auto input_chunks = torch::chunk(x_current, config.n_concurrent_jacobian);
-
-
-    // Prepare a list of jacobian chunks for output:
-    std::vector<torch::Tensor> jac_chunks;
-    jac_chunks.resize(config.n_concurrent_jacobian);
-
-    size_t i_chunk;
-
-    #pragma omp parallel for
-    for (i_chunk = 0; i_chunk < config.n_concurrent_jacobian; i_chunk ++){
-        jac_chunks[i_chunk] = jacobian(input_chunks[i_chunk], wf_copies[i_chunk]);
-    }
-
-
-    // Stack up the jacobian chunks:
-    auto jacobian_full =  torch::cat(jac_chunks, 0);
-
-    return jacobian_full;
-*/
-    return torch::Tensor();
-}
-
-
-torch::Tensor BaseOptimizer::jacobian(torch::Tensor x_current, ManyBodyWavefunction wavefunction){
-    /*
-
-    // This function goes through the jacobian like so:
-    // Duplicate the input by n_parameters
-    // How many walkers?
-    auto n_walkers = x_current.sizes()[0];
-
-
-    // Compute the value of the wavefunction for all walkers:
-    auto psi = wavefunction(x_current);
-
-    // psi = psi.repeat(n_walkers);
-    auto psi_v = torch::chunk(psi, n_walkers);
-
-    //
-    // // Construct a series of grad outputs:
-    // auto outputs = torch::eye(n_walkers, options);
-    //
-    // // Flatten and chunk it:
-    // auto output_list = torch::chunk(torch::flatten(outputs), n_walkers);
-    //
-
-
-    auto jacobian_flat = torch::zeros({n_walkers, n_parameters}, options);
-
-    int64_t i_walker = 0;
-
-    for (i_walker = 0; i_walker < n_walkers; ++i_walker){
-
-        // Compute the gradients:
-        auto jacobian_list = torch::autograd::grad(
-            {psi_v[i_walker]}, // outputs
-            wavefunction->parameters(), //inputs
-            {}, // grad_outputs
-            // {output_list[i_walker]}, // grad_outputs
-            true,  // retain graph
-            false, // create_graph
-            false  // allow_unused
-        );
-        std::vector<torch::Tensor> flat_this_jac;
-        for(auto & grad : jacobian_list) flat_this_jac.push_back(grad.flatten());
-
-        // Flatten the jacobian and put it into the larger matrix.
-        // Note the normalization by wavefunction happens here too.
-        jacobian_flat.index_put_({i_walker, Slice()}, torch::cat(flat_this_jac) / psi_v[i_walker]);
-    }
-
-    return jacobian_flat;
-    */
-    return torch::Tensor();
-
-}
 
 std::vector<torch::Tensor> BaseOptimizer::compute_O_observables(
     torch::Tensor flattened_jacobian,
@@ -354,7 +277,7 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
 
         auto start = high_resolution_clock::now();
         PLOG_INFO << "Start Jacobian";
-        auto jac = batch_jacobian(x_current, wavefunction);
+        auto jac = jac_calc.batch_jacobian_reverse(x_current, wavefunction);
         // auto jac = jacobian(x_current, wavefunction);
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<milliseconds>(stop - start);

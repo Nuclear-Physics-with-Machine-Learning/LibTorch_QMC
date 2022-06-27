@@ -34,17 +34,21 @@ struct SamplerConfig{
     int n_observable_measurements;
     int n_concurrent_obs_per_rank;
 
-    // SamplerConfig() :  
-    //     n_walkers(10000),
-    //     n_particles(10),
-    //     n_dim(3),
-    //     n_spin_up(0),
-    //     n_protons(0),
-    //     use_spin(false),
-    //     use_isospin(false),
-    //     kick_mean(0.0),
-    //     kick_std(0.2)
-    // {}
+    SamplerConfig() :  
+        n_walkers(500),
+        n_particles(1),
+        n_dim(1),
+        n_spin_up(0),
+        n_protons(0),
+        use_spin(false),
+        use_isospin(false),
+        kick_mean(0.0),
+        kick_std(0.5),
+        n_thermalize(1000),
+        n_void_steps(200),
+        n_observable_measurements(1),
+        n_concurrent_obs_per_rank(1)
+    {}
 };
 
 void to_json(json& j, const SamplerConfig& s);

@@ -15,12 +15,20 @@ void to_json(json& j, const MLPConfig& mlp){
 
 void from_json(const json& j, MLPConfig& mlp ){
 
-    j.at("n_input").get_to(mlp.n_input);
-    j.at("n_output").get_to(mlp.n_output);
-    j.at("n_layers").get_to(mlp.n_layers);
-    j.at("n_filters_per_layer").get_to(mlp.n_filters_per_layer);
-    j.at("bias").get_to(mlp.bias);
-    j.at("residual").get_to(mlp.residual);
+    // Overrides from json are only enforced if the key is present!
+
+    if (j.contains("n_input"))
+        j.at("n_input").get_to(mlp.n_input);
+    if (j.contains("n_output"))
+        j.at("n_output").get_to(mlp.n_output);
+    if (j.contains("n_layers"))
+        j.at("n_layers").get_to(mlp.n_layers);
+    if (j.contains("n_filters_per_layer"))
+        j.at("n_filters_per_layer").get_to(mlp.n_filters_per_layer);
+    if (j.contains("bias"))
+        j.at("bias").get_to(mlp.bias);
+    if (j.contains("residual"))
+        j.at("residual").get_to(mlp.residual);
 }
 
 void to_json(json& j, const DeepSetsCorrelaterConfig& d){
@@ -34,10 +42,14 @@ void to_json(json& j, const DeepSetsCorrelaterConfig& d){
 
 void from_json(const json& j, DeepSetsCorrelaterConfig& s ){
 
-    j.at("individual_config").get_to(s.individual_config);
-    j.at("aggregate_config").get_to(s.aggregate_config);
-    j.at("confinement").get_to(s.confinement);
-    j.at("latent_space").get_to(s.latent_space);
+    if (j.contains("individual_config"))
+        j.at("individual_config").get_to(s.individual_config);
+    if (j.contains("aggregate_config"))
+        j.at("aggregate_config").get_to(s.aggregate_config);
+    if (j.contains("confinement"))
+        j.at("confinement").get_to(s.confinement);
+    if (j.contains("latent_space"))
+        j.at("latent_space").get_to(s.latent_space);
 }
 
 
@@ -49,7 +61,10 @@ void to_json(json& j, const ManyBodyWavefunctionConfig& m){
     };
 }
 void from_json(const json& j, ManyBodyWavefunctionConfig& m){
-    j.at("correlator_config").get_to(m.correlator_config);
-    j.at("spatial_config").get_to(m.spatial_config);
-    j.at("mean_subtract").get_to(m.mean_subtract);
+    if (j.contains("correlator_config"))
+        j.at("correlator_config").get_to(m.correlator_config);
+    if (j.contains("spatial_config"))
+        j.at("spatial_config").get_to(m.spatial_config);
+    if (j.contains("mean_subtract"))
+        j.at("mean_subtract").get_to(m.mean_subtract);
 }

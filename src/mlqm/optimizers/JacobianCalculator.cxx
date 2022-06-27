@@ -338,3 +338,64 @@ torch::Tensor JacobianCalculator::batch_jacobian_forward(
 
     // return torch::Tensor();
 }
+
+#define KICK_SIZE 1e-3
+torch::Tensor JacobianCalculator::numerical_jacobian(
+    torch::Tensor x_current, ManyBodyWavefunction wavefunction){
+
+    // No need for gradients here
+    c10::InferenceMode guard(true);
+
+
+    // PLOG_INFO << "Enter forward";
+
+    // How many walkers?
+    auto n_walkers = x_current.sizes()[0];
+
+    // Compute the value of the wavefunction for all walkers:
+    auto psi = wavefunction(x_current);
+
+    auto jacobian_flat = torch::zeros({n_walkers, n_parameters}, options);
+
+    int64_t i_column = 0;
+
+    // Loop over the parameters:
+    size_t i_layer;
+    for (i_layer = 0; i_layer < wavefunction->parameters().size(); i_layer++){
+
+        auto this_layer = wavefunction->parameters()[i_layer];
+
+
+        // How many parameters in this layer?
+        auto local_n_params = flat_shapes[i_layer];
+
+        // Loop over the individual weights in these parameters:
+        for (int64_t i_weight = 0; i_weight < local_n_params; i_weight ++){
+            
+            // Update the weight of this particular layer
+            // Kick it up:
+            wavefunction -> parameters()[i_layer].flatten()[i_weight] += KICK_SIZE;
+
+            auto psi_up = wavefunction(x_current);
+
+            // Now, kick it down (undo the first kick and add negative kick):
+            wavefunction -> parameters()[i_layer].flatten()[i_weight] += -2.*KICK_SIZE;
+
+            auto psi_down = wavefunction(x_current);
+
+            // Undo all kicks before the next iteration:
+            wavefunction -> parameters()[i_layer].flatten()[i_weight] += KICK_SIZE;
+
+
+            auto this_jacobian_column = (psi_up - psi_down) / (2.*KICK_SIZE);
+
+            // PLOG_INFO << "Update " << output.sizes();
+            // Put it into the jacobian:
+            jacobian_flat.index_put_({Slice(), i_column}, this_jacobian_column);
+            i_column ++;
+        }
+    }
+
+    return jacobian_flat;
+
+}
