@@ -107,6 +107,11 @@ install(TARGETS mlqm
 add_executable(tests tests.cxx)
 target_link_libraries(tests PRIVATE Catch2::Catch2WithMain libmlqm)
 
+# Add a benchmark executable:
+add_executable(benchmark benchmark_jacobian.cxx)
+target_link_libraries(benchmark PRIVATE Catch2::Catch2WithMain libmlqm)
+
+
 # # This is from the docs ...
 # # These tests need their own main
 # add_executable(custom-main-tests test.cpp test-main.cpp)

@@ -16,12 +16,12 @@
         "kick_std" : 0.5,
         "n_thermalize": 1500,
         "n_void_steps": 200,
-        "n_observable_measurements": 20,
-        "n_concurrent_obs_per_rank": 5
+        "n_observable_measurements": 1,
+        "n_concurrent_obs_per_rank": 1
     },
     "wavefunction": {
         "spatial_config": {
-            "n_input" : 1,
+            "n_input" : 10000,
             "n_output" : 32,
             "n_layers" : 4,
             "n_filters_per_layer" : 32,
@@ -54,5 +54,5 @@
     "epsilon" : 0.001,
     "n_iterations" : 3,
     "out_dir": "output/test/",
-    "n_concurrent_jacobian" : 500
+    "n_concurrent_jacobian" : 5
 }

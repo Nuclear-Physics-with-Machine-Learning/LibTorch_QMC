@@ -96,7 +96,7 @@ torch::Tensor JacobianCalculator::jacobian_reverse(
 
         // Flatten the jacobian and put it into the larger matrix.
         // Note the normalization by wavefunction happens here too.
-        jacobian_flat.index_put_({i_walker, Slice()}, torch::cat(flat_this_jac) / psi_v[i_walker]);
+        jacobian_flat.index_put_({i_walker, Slice()}, torch::cat(flat_this_jac));
     }
 
     return jacobian_flat;
@@ -374,13 +374,10 @@ torch::Tensor JacobianCalculator::numerical_jacobian(
             
             // Update the weight of this particular layer
             // Kick it up:
-            std::cout << "Param " << i_column << " from " << wavefunction -> parameters()[i_layer].flatten()[i_weight];
             wavefunction -> parameters()[i_layer].flatten()[i_weight] += kick_size;
-            std::cout << " to " << wavefunction -> parameters()[i_layer].flatten()[i_weight] <<"\n";
 
-            std::cout << "  psi from " << psi << " to ";
             auto psi_up = wavefunction(x_current);
-            std::cout << psi_up <<"\n";
+
             wavefunction -> parameters()[i_layer].flatten()[i_weight] += kick_size;
             auto psi_up_up = wavefunction(x_current);
 

@@ -278,6 +278,10 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
         auto start = high_resolution_clock::now();
         PLOG_INFO << "Start Jacobian";
         auto jac = jac_calc.batch_jacobian_reverse(x_current, wavefunction);
+
+///TODO : NORMALIZE by walker
+        // jac[i_walker] = jac[i_walker] / psi_v[i_walker];
+
         // auto jac = jacobian(x_current, wavefunction);
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<milliseconds>(stop - start);
