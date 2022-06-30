@@ -127,9 +127,14 @@ torch::Tensor JacobianCalculator::batch_jacobian_reverse(
 
     int64_t i_chunk;
 
-    #pragma omp parallel for
-    for (i_chunk = 0; i_chunk < concurrency; i_chunk ++){
-        jac_chunks[i_chunk] = jacobian_reverse(input_chunks[i_chunk], wf_copies[i_chunk]);
+    #pragma omp parallel private(i_chunk) num_threads(concurrency)
+    {
+        at::init_num_threads();
+
+        // #pragma omp for
+        for (i_chunk = 0; i_chunk < concurrency; i_chunk ++){
+            jac_chunks[i_chunk] = jacobian_reverse(input_chunks[i_chunk], wf_copies[i_chunk]);
+        }
     }
 
 
@@ -298,9 +303,6 @@ torch::Tensor JacobianCalculator::batch_jacobian_forward(
 
     auto first_column = jacobian_forward_weight(psi, x_current, wavefunction, 0);
 
-    PLOG_INFO << first_column[0];
-    PLOG_INFO << first_column[1];
-
     auto jacobian_flat = torch::zeros({n_walkers, n_parameters}, options);
 
     // Loop over every parameter:
@@ -371,7 +373,7 @@ torch::Tensor JacobianCalculator::numerical_jacobian(
 
         // Loop over the individual weights in these parameters:
         for (int64_t i_weight = 0; i_weight < local_n_params; i_weight ++){
-            
+
             // Update the weight of this particular layer
             // Kick it up:
             wavefunction -> parameters()[i_layer].flatten()[i_weight] += kick_size;
@@ -393,9 +395,9 @@ torch::Tensor JacobianCalculator::numerical_jacobian(
 
 
             auto this_jacobian_column = (
-                    ( 1./12) * psi_down_down + 
+                    ( 1./12) * psi_down_down +
                     (-2./3.) * psi_down +
-                    ( 2./3.) * psi_up + 
+                    ( 2./3.) * psi_up +
                     (-1./12) * psi_up_up
                 ) / (kick_size);
 

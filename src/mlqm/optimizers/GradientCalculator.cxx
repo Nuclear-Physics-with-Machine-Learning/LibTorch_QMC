@@ -111,7 +111,8 @@ torch::Tensor GradientCalculator::pd_solve(
     //  This works in the event that solve_triangular isn't in the source you have
     auto dp_i = torch::linalg::solve(
         U_ij,
-        f_i
+        f_i,
+        true
     );
 
     return dp_i;

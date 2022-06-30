@@ -23,7 +23,7 @@ class BaseOptimizer
 {
 public:
     BaseOptimizer(Config cfg, torch::TensorOptions opts);
-    ~BaseOptimizer(){}
+    virtual ~BaseOptimizer();
 
     /**
      * @brief      Calculates the O observables. (dpsi_i, dpsi_ij, dpsi_i_EL)
@@ -108,7 +108,7 @@ public:
      *
      * @return     The metrics.
      */
-    std::map<std::string, torch::Tensor> compute_updates_and_metrics(
+    virtual std::map<std::string, torch::Tensor> compute_updates_and_metrics(
         std::vector<torch::Tensor> current_psi,
         std::vector<torch::Tensor> & gradients,
         torch::Tensor & next_energy);
@@ -136,7 +136,7 @@ public:
      */
     void apply_gradients(const std::vector<torch::Tensor> & gradients);
 
-private:
+protected:
 
     // Overall configuration:
     Config config;
@@ -175,7 +175,7 @@ private:
     torch::Tensor predicted_energy;
 
     // Total number of parameters in the wavefunction:
-    int64_t n_parameters;
+    uint64_t n_parameters;
 
     // Store the flattened shape of each parameter layer:
     std::vector<int64_t> flat_shapes;

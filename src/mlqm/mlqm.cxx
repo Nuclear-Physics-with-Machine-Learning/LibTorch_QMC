@@ -4,7 +4,7 @@
 #include <torch/torch.h>
 
 #include "config/config.h"
-#include "optimizers/BaseOptimizer.h"
+#include "optimizers/AdaptiveDelta.h"
 
 #include <nlohmann/json.hpp>
 
@@ -60,22 +60,24 @@ int main(int argc, char* argv[]) {
   }
   catch (...){
     PLOG_ERROR << "ERROR!  json file might have an error.";
+    return -1;
   }
 
+  PLOG_INFO << j_cfg.dump(2);
 
 
   // Convert the json object into a config object:
 
   Config cfg = j_cfg.get<Config>();
 
-  // This logic here ensures that the 
+  // This logic here ensures that the
   // wavefunctions get populated properly with input/output dimensions.
   cfg.validate_config();
- 
-  
+
+
   json resolved_json = cfg;
   PLOG_INFO << "Config: " <<  resolved_json.dump(2);
-  
+
 
   // Create default tensor options, passed for all tensor creation:
 
@@ -94,6 +96,7 @@ int main(int argc, char* argv[]) {
   // Configure a logger:
 
   // Set number of threads
+  at::init_num_threads();
   // at::set_num_interop_threads(cfg.sampler.n_particles);
   // at::set_num_threads(cfg.sampler.n_particles);
 
@@ -103,18 +106,32 @@ int main(int argc, char* argv[]) {
   PLOG_INFO << "Device selected: " << options.device();
 
   // Create the base algorithm:
-  BaseOptimizer optim(cfg, options);
+  BaseOptimizer * optim;
+
+  switch (cfg.optimizer.mode) {
+    case OptimizerConfig::FLAT:
+      optim = new BaseOptimizer(cfg, options);
+      break;
+    case OptimizerConfig::ADAPTIVE_DELTA:
+      optim = new AdaptiveDelta(cfg, options);
+      break;
+    case OptimizerConfig::ADAPTIVE_EPSILON:
+      optim = new AdaptiveDelta(cfg, options);
+      break;
+  }
 
   // Run the optimization:
-  for (int64_t iteration = 0; iteration < cfg.n_iterations; iteration ++){
-      auto start = std::chrono::high_resolution_clock::now();
-      auto metrics = optim.sr_step();
-      auto stop = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double, std::milli>  duration = stop - start;
-      PLOG_INFO << "energy: " << metrics["energy/energy"].cpu().data_ptr<double>()[0];
-      PLOG_INFO << "Duration: " << duration.count() << "[ms]";
-      // PLOG_INFO << metrics;
+  for (int64_t iteration = 0; iteration < cfg.optimizer.n_iterations; iteration ++){
+    auto start = std::chrono::high_resolution_clock::now();
+    auto metrics = optim -> sr_step();
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli>  duration = stop - start;
+    PLOG_INFO << "energy: " << metrics["energy/energy"].cpu().data_ptr<double>()[0];
+    PLOG_INFO << "Duration: " << duration.count() << "[ms]";
+    // PLOG_INFO << metrics;
   }
+
+  delete optim;
 
   return 0;
 }

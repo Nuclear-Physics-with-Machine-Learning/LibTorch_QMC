@@ -12,22 +12,25 @@
 #include "SamplerConfig.h"
 #include "ModelConfig.h"
 #include "HamiltonianConfig.h"
+#include "OptimizerConfig.h"
+
+// We include the logger here because config.h gets included everywhere
+#define PLOG_OMIT_LOG_DEFINES
+#include <plog/Log.h> // Step1: include the headers
+#include "plog/Initializers/RollingFileInitializer.h"
+#include "plog/Appenders/ConsoleAppender.h"
 
 
 struct Config{
     SamplerConfig sampler;
     ManyBodyWavefunctionConfig wavefunction;
     NuclearHamiltonianConfig hamiltonian;
-    float delta;
-    float epsilon;
-    int n_iterations;
+    OptimizerConfig optimizer;
+
     std::string out_dir;
     size_t n_concurrent_jacobian;
 
     Config(){
-        delta = 0.01;
-        epsilon = 0.001;
-        n_iterations = 50;
         n_concurrent_jacobian = 1;
         out_dir = "";
     }
@@ -36,10 +39,10 @@ struct Config{
         // input to individual-particle correlator must == n_dim of each particle
         this -> wavefunction.correlator_config.individual_config.n_input = this -> sampler.n_dim;
         // Output of individual-particle must equal latent size
-        this -> wavefunction.correlator_config.individual_config.n_output 
+        this -> wavefunction.correlator_config.individual_config.n_output
          = this -> wavefunction.correlator_config.latent_space;
         // input to individual-particle correlator must == latent_space
-        this -> wavefunction.correlator_config.aggregate_config.n_input 
+        this -> wavefunction.correlator_config.aggregate_config.n_input
         = this -> wavefunction.correlator_config.latent_space;
         // Input to spatial configs in the Slater matrix must == n_dim
         this -> wavefunction.spatial_config.n_input = this -> sampler.n_dim;

@@ -74,7 +74,7 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     auto params = wavefunction -> named_parameters();
 
     n_parameters = 0;
-    int n_layers = wavefunction->parameters().size();
+    size_t n_layers = wavefunction->parameters().size();
     for (auto & key_pair : params){
         int64_t local_params = 1;
         for (auto & s : key_pair.value().sizes()){
@@ -116,10 +116,12 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     PLOG_INFO << "Begin initial equilibration with " << input.sizes()[0] << " walkers";
     // float acceptance = equilibrate(cfg.sampler.n_thermalize).data_ptr<double>()[0];
     auto acceptance = equilibrate(cfg.sampler.n_thermalize);
-    PLOG_INFO << "Done initial equilibration, acceptance = " << acceptance.cpu().data_ptr<double>()[0];
+    PLOG_INFO << "Done initial equilibration, acceptance = " << acceptance.cpu().data_ptr<float>()[0];
 
 
 }
+
+BaseOptimizer::~BaseOptimizer(){}
 
 torch::Tensor BaseOptimizer::equilibrate(int64_t n_iterations){
     torch::Tensor acceptance = sampler.kick(n_iterations, wavefunction);
@@ -346,7 +348,7 @@ std::map<std::string, torch::Tensor> BaseOptimizer::sr_step(){
 
     torch::Tensor next_energy;
     std::vector<torch::Tensor> delta_p;
-    auto opt_metrics = compute_updates_and_metrics(current_psi, delta_p, next_energy);
+    auto opt_metrics = this -> compute_updates_and_metrics(current_psi, delta_p, next_energy);
 
     metrics.insert(opt_metrics.begin(), opt_metrics.end());
     // Compute the ratio of the previous energy and the current energy
@@ -511,6 +513,7 @@ std::map<std::string, torch::Tensor> BaseOptimizer::compute_updates_and_metrics(
     std::vector<torch::Tensor> & gradients,
     torch::Tensor & next_energy){
 
+    PLOG_INFO << "BASE update";
     // This particular instance is just a pass through, but intended
     // to be an overriden entry point to a better optimization algorithm
     auto opt_metrics = flat_optimizer(
@@ -565,10 +568,13 @@ std::map<std::string, torch::Tensor> BaseOptimizer::flat_optimizer(
         estimator["energy"],
         estimator["dpsi_i_EL"],
         estimator["dpsi_ij"],
-        torch::full({}, config.epsilon, options),
+        torch::full({}, config.optimizer.epsilon[0], options),
         S_ij);
 
-    auto delta_p = dp_i * torch::full({}, config.delta, options);
+    // Delta and epsilon are by default arrays (length 2) specifying trials
+    // Take the first, by default.
+
+    auto delta_p = dp_i * torch::full({}, config.optimizer.delta[0], options);
 
     // Unpack the gradients
     // TODO
@@ -598,13 +604,13 @@ std::map<std::string, torch::Tensor> BaseOptimizer::flat_optimizer(
         overlap, acos);
 
     // Compute the parameter distance:
-    torch::Tensor par_dist = grad_calc.par_dist(dp_i, S_ij);
+    torch::Tensor par_dist = grad_calc.par_dist(config.optimizer.delta[0] * dp_i, S_ij);
     torch::Tensor ratio    = torch::abs(par_dist - acos) / torch::abs(par_dist + acos+ 1e-8);
 
 
     std::map<std::string, torch::Tensor> opt_metrics = {
-        {"optimizer/delta"   , torch::full({}, config.delta, options)},
-        {"optimizer/eps"     , torch::full({}, config.epsilon, options)},
+        {"optimizer/delta"   , torch::full({}, config.optimizer.delta[0], options)},
+        {"optimizer/eps"     , torch::full({}, config.optimizer.epsilon[0], options)},
         {"optimizer/overlap" , overlap},
         {"optimizer/par_dist", par_dist},
         {"optimizer/acos"    , acos},

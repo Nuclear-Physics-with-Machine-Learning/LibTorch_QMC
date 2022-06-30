@@ -108,7 +108,7 @@ add_executable(tests tests.cxx)
 target_link_libraries(tests PRIVATE Catch2::Catch2WithMain libmlqm)
 
 # Add a benchmark executable:
-add_executable(benchmark benchmark_jacobian.cxx)
+add_executable(benchmark benchmark.cxx)
 target_link_libraries(benchmark PRIVATE Catch2::Catch2WithMain libmlqm)
 
 
