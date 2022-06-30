@@ -21,16 +21,17 @@ MetropolisSampler::MetropolisSampler(SamplerConfig _cfg, torch::TensorOptions op
 
 
     this -> x = torch::randn({n_walkers_opt_shape, cfg.n_particles, cfg.n_dim}, opts);
+    // Initialize a tensor, just in case it's called: 
+    this -> spin    = -1. * torch::ones({n_walkers_opt_shape,cfg.n_particles}, opts); // spin either up/down
     if(_cfg.use_spin){
-        this -> spin    = -1. * torch::ones({n_walkers_opt_shape,cfg.n_particles}, opts); // spin either up/down
         // Set a fixed number to 1:
         for (int64_t i = 0; i < cfg.n_spin_up; i++){
             if (i >= cfg.n_particles) break;
             spin.index_put_({Slice{}, i},1.0);
         }
     }
+    this -> isospin = -1 * torch::ones({n_walkers_opt_shape,cfg.n_particles}, opts); // isospin either up/down
     if(_cfg.use_isospin){
-        this -> isospin = -1 * torch::ones({n_walkers_opt_shape,cfg.n_particles}, opts); // isospin either up/down
         // Set a fixed number to 1:
         for (int64_t i = 0; i < cfg.n_protons; i++){
             if (i >= cfg.n_particles) break;

@@ -51,7 +51,7 @@ struct DeepSetsCorrelaterConfig{
 
     // Default constructor:
     DeepSetsCorrelaterConfig(){
-        confinement = -0.1;
+        confinement = 0.1;
         latent_space = 32;
         individual_config.n_output = latent_space;
         aggregate_config.n_input = latent_space;

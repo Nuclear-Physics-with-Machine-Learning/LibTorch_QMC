@@ -22,7 +22,6 @@ torch::Tensor ManyBodyWavefunctionImpl::forward(torch::Tensor x){
 
     // The input will be of the shape [N_walkers, n_particles, n_dim]
     // c10::InferenceMode guard(true);
-
     // mean subtract if needed:
     if (cfg.mean_subtract){
         // Average over particles
@@ -31,7 +30,8 @@ torch::Tensor ManyBodyWavefunctionImpl::forward(torch::Tensor x){
         x = x - mean.reshape({x.sizes()[0], 1, x.sizes()[2]});
     }
 
-    return dsc(x);
+    auto correlation =  dsc(x);
 
+    return correlation;
 
 }

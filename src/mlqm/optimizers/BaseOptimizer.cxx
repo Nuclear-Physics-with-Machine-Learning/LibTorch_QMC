@@ -70,9 +70,6 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     adaptive_wavefunction -> to(torch::kFloat64);
 
 
-    // Set up the concurrency in the jacobian calculator:
-    jac_calc.set_parallelization(wavefunction, config.n_concurrent_jacobian);
-
 
     auto params = wavefunction -> named_parameters();
 
@@ -96,59 +93,31 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     PLOG_INFO << "Total parameters: " << n_parameters;
     PLOG_INFO << "Total layers: " << n_layers;
 
+    // We can't set concurrency if the concurrency is too high:
+    if (config.n_concurrent_jacobian > n_parameters){
+        PLOG_WARNING << "Jacobian Concurrency is larger than the number of parameters";
+        PLOG_WARNING << "This may cause segmentation faults or incorrect calculations";
+    }
     // Initialize random input:
     auto input = sampler.sample_x();
+
+    if (config.n_concurrent_jacobian > input.sizes()[0]){
+        PLOG_WARNING << "Jacobian Concurrency is larger than the number of concurrent walkers";
+        PLOG_WARNING << "This may cause segmentation faults or incorrect calculations";
+    }
+    // Set up the concurrency in the jacobian calculator:
+    jac_calc.set_parallelization(wavefunction, config.n_concurrent_jacobian);
+
+
+
+
 
     // Thermalize the walkers for some large number of initial thermalizations:
     PLOG_INFO << "Begin initial equilibration with " << input.sizes()[0] << " walkers";
     // float acceptance = equilibrate(cfg.sampler.n_thermalize).data_ptr<double>()[0];
     auto acceptance = equilibrate(cfg.sampler.n_thermalize);
-    PLOG_INFO << "Done initial equilibration, acceptance = " << acceptance;
+    PLOG_INFO << "Done initial equilibration, acceptance = " << acceptance.cpu().data_ptr<double>()[0];
 
-
-    // Here, temporarily, benchmark the jacobian calculations:
-    auto start = std::chrono::high_resolution_clock::now();
-    auto jac_rev = jac_calc.jacobian_reverse(input, wavefunction);
-    auto stop = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli>  duration = stop - start;
-    PLOG_INFO << "Reverse Jacobian time: " << duration.count() << "[ms]";
-
-    PLOG_DEBUG << "First few Jacobian entries: ";
-    PLOG_DEBUG << "  jac_rev[0][0]: " << jac_rev[0][0];
-    PLOG_DEBUG << "  jac_rev[1][0]: " << jac_rev[1][0];
-    PLOG_DEBUG << "  jac_rev[0][1]: " << jac_rev[0][1];
-    PLOG_DEBUG << "  jac_rev[1][1]: " << jac_rev[1][1];
-
-    start = std::chrono::high_resolution_clock::now();
-    auto jac_rev_batched = jac_calc.batch_jacobian_reverse(input, wavefunction);
-    stop = std::chrono::high_resolution_clock::now();
-    duration = stop - start;
-    PLOG_INFO << "Batched reverse Jacobian time: " << duration.count() << "[ms]";
-
-    start = std::chrono::high_resolution_clock::now();
-    auto jac_numerical = jac_calc.numerical_jacobian(input, wavefunction);
-    stop = std::chrono::high_resolution_clock::now();
-    duration = stop - start;
-    PLOG_INFO << "Numerical Jacobian time: " << duration.count() << "[ms]";
-
-    PLOG_DEBUG << "First few Jacobian entries: ";
-    PLOG_DEBUG << "  jac_numerical[0][0]: " << jac_numerical[0][0];
-    PLOG_DEBUG << "  jac_numerical[1][0]: " << jac_numerical[1][0];
-    PLOG_DEBUG << "  jac_numerical[0][1]: " << jac_numerical[0][1];
-    PLOG_DEBUG << "  jac_numerical[1][1]: " << jac_numerical[1][1];
-
-
-    start = std::chrono::high_resolution_clock::now();
-    auto jac_fwd = jac_calc.jacobian_forward(input, wavefunction);
-    stop = std::chrono::high_resolution_clock::now();
-    duration = stop - start;
-    PLOG_INFO << "Forward Jacobian time: " << duration.count() << "[ms]";
-
-    // start = std::chrono::high_resolution_clock::now();
-    // auto jac_fwd_batched = jac_calc.batch_jacobian_forward(input, wavefunction);
-    // stop = std::chrono::high_resolution_clock::now();
-    // duration = stop - start;
-    // PLOG_INFO << "Batched forward Jacobian time: " << duration.count() << "[ms]";
 
 }
 
@@ -235,7 +204,6 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
                 w_of_x
             );
 
-
         // R is computed but it needs to be WRT the center of mass of all particles
         // So, mean subtract if needed:
         if (config.wavefunction.mean_subtract){
@@ -274,18 +242,12 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
 
 
         // For each observation, we compute the jacobian.
-
-        auto start = high_resolution_clock::now();
-        PLOG_INFO << "Start Jacobian";
         auto jac = jac_calc.batch_jacobian_reverse(x_current, wavefunction);
 
-///TODO : NORMALIZE by walker
-        // jac[i_walker] = jac[i_walker] / psi_v[i_walker];
+        // Jac shape is [n_walkers, n_parameters] and we need to normalize by the wavefunction values
+        jac = jac / torch::reshape(w_of_x, {-1, 1});
 
-        // auto jac = jacobian(x_current, wavefunction);
-        auto stop = high_resolution_clock::now();
-        auto duration = duration_cast<milliseconds>(stop - start);
-        PLOG_INFO << "End Jacobian (" << duration.count() << "ms)";
+
 
         // split the jacobian into chunks as well, per configuration:
         auto split_jacobian = torch::chunk(jac, config.sampler.n_concurrent_obs_per_rank, 0);
@@ -351,7 +313,6 @@ std::map<std::string, torch::Tensor> BaseOptimizer::sr_step(){
 
     // Clear the walker history:
     sampler.reset_history();
-
 
     // Now, actually apply the loop and compute the observables:
     std::vector<torch::Tensor> current_psi = walk_and_accumulate_observables();

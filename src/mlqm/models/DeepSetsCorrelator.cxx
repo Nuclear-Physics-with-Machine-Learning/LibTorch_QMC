@@ -59,7 +59,6 @@ torch::Tensor DeepSetsCorrelatorImpl::forward(torch::Tensor x){
     torch::Tensor exp = x.pow(2).sum({1,2});
     auto confinement = -cfg.confinement * exp;
 
-
     return torch::exp(summed_output + confinement);
 
 }

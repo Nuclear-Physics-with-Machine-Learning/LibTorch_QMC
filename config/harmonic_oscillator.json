@@ -1,0 +1,12 @@
+{
+    "sampler": {
+        "n_walkers" : 50,
+        "n_observable_measurements": 1,
+        "n_concurrent_obs_per_rank": 1,
+    },
+    "wavefunction": {
+        "mean_subtract"     : false
+    },
+    "delta": 0.1,
+    "n_concurrent_jacobian": 10
+}

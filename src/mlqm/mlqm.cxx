@@ -105,16 +105,16 @@ int main(int argc, char* argv[]) {
   // Create the base algorithm:
   BaseOptimizer optim(cfg, options);
 
-  // // Run the optimization:
-  // for (int64_t iteration = 0; iteration < cfg.n_iterations; iteration ++){
-  //     auto start = std::chrono::high_resolution_clock::now();
-  //     auto metrics = optim.sr_step();
-  //     auto stop = std::chrono::high_resolution_clock::now();
-  //     std::chrono::duration<double, std::milli>  duration = stop - start;
-  //     PLOG_INFO << "energy: " << metrics["energy/energy"];
-  //     PLOG_INFO << "Duration: " << duration.count() << "[ms]";
-  //     // PLOG_INFO << metrics;
-  // }
+  // Run the optimization:
+  for (int64_t iteration = 0; iteration < cfg.n_iterations; iteration ++){
+      auto start = std::chrono::high_resolution_clock::now();
+      auto metrics = optim.sr_step();
+      auto stop = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double, std::milli>  duration = stop - start;
+      PLOG_INFO << "energy: " << metrics["energy/energy"].cpu().data_ptr<double>()[0];
+      PLOG_INFO << "Duration: " << duration.count() << "[ms]";
+      // PLOG_INFO << metrics;
+  }
 
   return 0;
 }
