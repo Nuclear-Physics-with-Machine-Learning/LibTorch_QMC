@@ -40,7 +40,9 @@ public:
      *
      * @return     jacobian matrix of shape [n_walkers, n_parameters]
      */
-    torch::Tensor jacobian_forward(torch::Tensor x_current, ManyBodyWavefunction wavefunction);
+    torch::Tensor jacobian_forward(torch::Tensor x_current, 
+        torch::Tensor spin, torch::Tensor isospin,
+        ManyBodyWavefunction wavefunction);
 
     /**
      * @brief      Batch calls to the forward mode jacobian calculation, using wf copies.
@@ -50,7 +52,9 @@ public:
      *
      * @return     jacobian_matrix of shape [n_walkers, n_parameters]
      */
-    torch::Tensor batch_jacobian_forward(torch::Tensor x_current, ManyBodyWavefunction wavefunction);
+    torch::Tensor batch_jacobian_forward(torch::Tensor x_current, 
+        torch::Tensor spin, torch::Tensor isospin,
+        ManyBodyWavefunction wavefunction);
 
     /**
      * @brief      Compute jacobian of the wavefunction parameters for each configuration
@@ -61,7 +65,9 @@ public:
      *
      * @return     jacobian matrix of shape [n_walkers, n_parameters]
      */
-    torch::Tensor jacobian_reverse(torch::Tensor x_current, ManyBodyWavefunction wavefunction);
+    torch::Tensor jacobian_reverse(torch::Tensor x_current, 
+        torch::Tensor spin, torch::Tensor isospin,
+        ManyBodyWavefunction wavefunction);
 
     /**
      * @brief      Batch calls to the reverse mode jacobian calculation, using wf copies.
@@ -71,7 +77,9 @@ public:
      *
      * @return     jacobian_matrix of shape [n_walkers, n_parameters]
      */
-    torch::Tensor batch_jacobian_reverse(torch::Tensor x_current, ManyBodyWavefunction wavefunction);
+    torch::Tensor batch_jacobian_reverse(torch::Tensor x_current, 
+        torch::Tensor spin, torch::Tensor isospin,
+        ManyBodyWavefunction wavefunction);
 
 
     /**
@@ -87,7 +95,7 @@ public:
      * @brief Compute one column of the jacobian function (one parameter, all walkers)
      */
     torch::Tensor jacobian_forward_weight(torch::Tensor psi,
-        torch::Tensor x_current, ManyBodyWavefunction wavefunction, int64_t weight_index);
+        ManyBodyWavefunction wavefunction, int64_t weight_index);
 
     /**
      * @brief      Compute the jacobian numerically.  Meant for checking.
@@ -97,7 +105,9 @@ public:
      *
      * @return     Jacobian of walkers, WF weights
      */
-    torch::Tensor numerical_jacobian(torch::Tensor x_current, ManyBodyWavefunction wavefunction, float kick_size=1e-4);
+    torch::Tensor numerical_jacobian(torch::Tensor x_current, 
+        torch::Tensor spin, torch::Tensor isospin,
+        ManyBodyWavefunction wavefunction, float kick_size=1e-4);
 
 private:
 

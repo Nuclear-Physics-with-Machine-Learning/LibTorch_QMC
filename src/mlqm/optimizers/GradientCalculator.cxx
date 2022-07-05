@@ -79,13 +79,13 @@ torch::Tensor GradientCalculator::pd_solve(
 
 
     // Solve the equation
-    // auto dp_i = torch::linalg::solve_triangular(
-    //     U_ij, // input
-    //     f_i, // other
-    //     false, // upper
-    //     true, // left
-    //     false // unitriangular
-    // );
+    auto dp_i = torch::linalg::solve_triangular(
+        U_ij, // input
+        f_i, // other
+        false, // upper
+        true, // left
+        false // unitriangular
+    );
 
     /*
      *If upper= True (resp. False) just the upper (resp. lower)
@@ -108,12 +108,12 @@ torch::Tensor GradientCalculator::pd_solve(
     */
 
 
-    //  This works in the event that solve_triangular isn't in the source you have
-    auto dp_i = torch::linalg::solve(
-        U_ij,
-        f_i,
-        true
-    );
+    // //  This works in the event that solve_triangular isn't in the source you have
+    // auto dp_i = torch::linalg::solve(
+    //     U_ij,
+    //     f_i,
+    //     true
+    // );
 
     return dp_i;
 }

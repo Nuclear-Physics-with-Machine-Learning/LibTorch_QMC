@@ -29,7 +29,8 @@ public:
      *
      * @return     Tensor of per-configuration energy
      */
-    torch::Tensor energy(ManyBodyWavefunction wavefunction, torch::Tensor inputs, 
+    torch::Tensor energy(ManyBodyWavefunction wavefunction, 
+        torch::Tensor inputs, torch::Tensor spin, torch::Tensor isospin,
         torch::Tensor & energy_jf, 
         torch::Tensor & ke_jf, 
         torch::Tensor & ke_direct, 
@@ -76,7 +77,8 @@ public:
      * @return     Wavefunction value + derivatives (1st, 2nd order Hessian diagonal).
      */
     std::vector<torch::Tensor> compute_derivatives(
-        ManyBodyWavefunction wavefunction, torch::Tensor inputs);
+        ManyBodyWavefunction wavefunction, 
+        torch::Tensor inputs, torch::Tensor spin, torch::Tensor isospin);
 
 
 private:

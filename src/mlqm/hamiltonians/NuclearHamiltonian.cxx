@@ -8,7 +8,7 @@ NuclearHamiltonian::NuclearHamiltonian(
 
 torch::Tensor NuclearHamiltonian::energy(
     ManyBodyWavefunction wavefunction,
-    torch::Tensor inputs, // torch::Tensor spin, torch::Tensor isospin
+    torch::Tensor inputs, torch::Tensor spin, torch::Tensor isospin,
     torch::Tensor & energy_jf,
     torch::Tensor & ke_jf,
     torch::Tensor & ke_direct,
@@ -17,7 +17,7 @@ torch::Tensor NuclearHamiltonian::energy(
 {
 
     // Get the necessary derivatives:
-    auto derivatives = compute_derivatives(wavefunction, inputs);
+    auto derivatives = compute_derivatives(wavefunction, inputs, spin, isospin);
 
     w_of_x                = derivatives[0];
     torch::Tensor dw_dx   = derivatives[1];
@@ -53,14 +53,14 @@ torch::Tensor NuclearHamiltonian::energy(
 
 std::vector<torch::Tensor> NuclearHamiltonian::compute_derivatives(
     ManyBodyWavefunction wavefunction,
-    torch::Tensor inputs)
+    torch::Tensor inputs, torch::Tensor spin, torch::Tensor isospin)
 {
 
     // First, we set the inputs to tensors that require grad:
     inputs.requires_grad_(true);
 
     // Now, compute the value of the wavefunction:
-    torch::Tensor w_of_x = wavefunction(inputs);
+    torch::Tensor w_of_x = wavefunction(inputs, spin, isospin);
 
 
     torch::Tensor v = torch::ones(inputs.sizes());

@@ -1,12 +1,18 @@
 {
     "sampler": {
-        "n_walkers" : 50,
+        "n_walkers" : 20,
+        "n_particles": 2,
+        "n_dim": 3,
         "n_observable_measurements": 1,
         "n_concurrent_obs_per_rank": 1,
+        "use_spin": true,
+        "use_isospin": true,
+        "n_spin_up": 2,
+        "n_protons": 1
     },
     "wavefunction": {
         "mean_subtract"     : false
     },
     "delta": 0.1,
-    "n_concurrent_jacobian": 10
+    "n_concurrent_jacobian": 1
 }

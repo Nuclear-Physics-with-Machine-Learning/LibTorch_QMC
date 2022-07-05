@@ -49,8 +49,8 @@ private:
 
     void init_possilble_swaps();
 
-    std::vector<std::pair<int64_t, int64_t>> possible_swaps;
-
     int64_t n_walkers_opt_shape;
+
+    std::vector<std::array<int64_t, 2> > possible_swaps;
 
 };

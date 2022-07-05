@@ -9,7 +9,7 @@
 
 #include "optimizers/JacobianCalculator.h"
 
-TEST_CASE( "Sampler size is correct", "[sampler]"){
+TEST_CASE("sampler"){
     Config cfg;
 
     auto options = torch::TensorOptions()
@@ -35,7 +35,7 @@ TEST_CASE( "Sampler size is correct", "[sampler]"){
     REQUIRE (x.sizes()[2] == cfg.sampler.n_dim);
 }
 
-TEST_CASE(" Wavefunction works", "[wavefunction"){
+TEST_CASE("wavefunction"){
 
     Config cfg;
 
@@ -69,18 +69,31 @@ TEST_CASE(" Wavefunction works", "[wavefunction"){
 
     JacobianCalculator jac_calc(options);
     ManyBodyWavefunction wavefunction = ManyBodyWavefunction(
-        cfg.wavefunction, options);
+        cfg.wavefunction, cfg.sampler, options);
     wavefunction -> to(torch::kDouble);
     wavefunction -> to(options.device());
 
-    auto psi = wavefunction(sampler.sample_x());
+    auto psi = wavefunction(sampler.sample_x(), sampler.sample_spin(), sampler.sample_isospin());
 
+
+    // Test a number of things
+    // First, if we swap two particles, what happens to the slater components?
+
+    // SECTION("SpinSlater"){
+    //     // get the spin:
+    //     auto spin = sampler.sample_spin();
+
+    //     // Pick a random pair of swaps:
+        
+    // }
+
+    // 
 
 }
 
 
 
-TEST_CASE( "Differentiation matches numerical approximations", "[wavefunction]"){
+TEST_CASE( "Differentiation"){
 
 
     Config cfg;
@@ -114,13 +127,15 @@ TEST_CASE( "Differentiation matches numerical approximations", "[wavefunction]")
 
 
     ManyBodyWavefunction wavefunction = ManyBodyWavefunction(
-        cfg.wavefunction, options);
+        cfg.wavefunction, cfg.sampler, options);
     wavefunction -> to(torch::kDouble);
     wavefunction -> to(options.device());
 
     auto x = sampler.sample_x();
+    auto spin = sampler.sample_spin();
+    auto isospin = sampler.sample_isospin();
 
-    auto derivatives =  h.compute_derivatives(wavefunction, x);
+    auto derivatives =  h.compute_derivatives(wavefunction, x, spin, isospin);
 
     auto w_of_x  = derivatives[0];
     auto dw_dx   = derivatives[1];
@@ -139,8 +154,8 @@ TEST_CASE( "Differentiation matches numerical approximations", "[wavefunction]")
             auto x_up = x + kick;
             auto x_down = x - kick;
 
-            auto w_up = wavefunction(x_up);
-            auto w_down = wavefunction(x_down);
+            auto w_up = wavefunction(x_up, spin, isospin);
+            auto w_down = wavefunction(x_down, spin, isospin);
 
             // Compute the numerical derivative:
             auto numerical_dw_dx = (w_up - w_down) / (2*kick_size);
@@ -179,7 +194,7 @@ TEST_CASE( "Differentiation matches numerical approximations", "[wavefunction]")
 
 
 
-TEST_CASE("Jacobian Calculation matches numerical approximations.", "[jacobian]"){
+TEST_CASE("jacobian"){
 
 
     Config cfg;
@@ -215,7 +230,7 @@ TEST_CASE("Jacobian Calculation matches numerical approximations.", "[jacobian]"
 
     JacobianCalculator jac_calc(options);
     ManyBodyWavefunction wavefunction = ManyBodyWavefunction(
-        cfg.wavefunction, options);
+        cfg.wavefunction, cfg.sampler, options);
     wavefunction -> to(torch::kDouble);
     wavefunction -> to(options.device());
 
@@ -223,14 +238,16 @@ TEST_CASE("Jacobian Calculation matches numerical approximations.", "[jacobian]"
     jac_calc.set_parallelization(wavefunction, 1);
 
     auto x = sampler.sample_x();
+    auto spin = sampler.sample_spin();
+    auto isospin = sampler.sample_isospin();
 
     float KICK_SIZE = 1e-3;
 
     // The numerical jacobian is what we benchmark against:
-    auto jac_numerical = jac_calc.numerical_jacobian(x, wavefunction, KICK_SIZE);
+    auto jac_numerical = jac_calc.numerical_jacobian(x, spin, isospin, wavefunction, KICK_SIZE);
 
 
-    auto jac_rev = jac_calc.jacobian_reverse(x, wavefunction);
+    auto jac_rev = jac_calc.jacobian_reverse(x, spin, isospin, wavefunction);
 
     REQUIRE(jac_numerical.sizes() == jac_rev.sizes());
     // Find the largerst absolute difference between the numerical and analytical deriv:
@@ -239,7 +256,7 @@ TEST_CASE("Jacobian Calculation matches numerical approximations.", "[jacobian]"
     REQUIRE(pass.data_ptr<bool>()[0]);
 
 
-    auto jac_rev_batched = jac_calc.batch_jacobian_reverse(x, wavefunction);
+    auto jac_rev_batched = jac_calc.batch_jacobian_reverse(x, spin, isospin, wavefunction);
     REQUIRE(jac_numerical.sizes() == jac_rev_batched.sizes());
     diff = torch::max(torch::abs(jac_numerical - jac_rev_batched));
     pass = (diff < 2*1e-3).to(torch::kBool).cpu();
@@ -247,13 +264,13 @@ TEST_CASE("Jacobian Calculation matches numerical approximations.", "[jacobian]"
 
 
 
-    auto jac_fwd = jac_calc.jacobian_forward(x, wavefunction);
+    auto jac_fwd = jac_calc.jacobian_forward(x, spin, isospin, wavefunction);
     REQUIRE(jac_numerical.sizes() == jac_fwd.sizes());
     diff = torch::max(torch::abs(jac_numerical - jac_fwd));
     pass = (diff < 2*1e-3).to(torch::kBool).cpu();
     REQUIRE(pass.data_ptr<bool>()[0]);
 
-    auto jac_fwd_batched = jac_calc.batch_jacobian_forward(x, wavefunction);
+    auto jac_fwd_batched = jac_calc.batch_jacobian_forward(x, spin, isospin, wavefunction);
 
     REQUIRE(jac_numerical.sizes() == jac_fwd_batched.sizes());
     diff = torch::max(torch::abs(jac_numerical - jac_fwd_batched));

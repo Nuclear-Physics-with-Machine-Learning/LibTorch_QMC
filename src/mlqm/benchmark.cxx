@@ -53,18 +53,20 @@ TEST_CASE("Derivatives Benchmark"){
 
 
     ManyBodyWavefunction wavefunction = ManyBodyWavefunction(
-        cfg.wavefunction, options);
+        cfg.wavefunction, cfg.sampler, options);
     wavefunction -> to(torch::kDouble);
     wavefunction -> to(options.device());
 
     auto x = sampler.sample_x();
+    auto spin = sampler.sample_spin();
+    auto isospin = sampler.sample_isospin();
 
     // Warm up
-    auto derivatives =  h.compute_derivatives(wavefunction, x);
+    auto derivatives =  h.compute_derivatives(wavefunction, x, spin, isospin);
 
 
     BENCHMARK("Hamiltonian Derivatives"){
-        return h.compute_derivatives(wavefunction, x);
+        return h.compute_derivatives(wavefunction, x, spin, isospin);
     };
 
 }
@@ -84,7 +86,7 @@ TEST_CASE("JacobianBenchmarkForward"){
 
     JacobianCalculator jac_calc(options);
     ManyBodyWavefunction wavefunction = ManyBodyWavefunction(
-        cfg.wavefunction, options);
+        cfg.wavefunction, cfg.sampler, options);
     wavefunction -> to(torch::kDouble);
     wavefunction -> to(options.device());
 
@@ -92,9 +94,11 @@ TEST_CASE("JacobianBenchmarkForward"){
     jac_calc.set_parallelization(wavefunction, 1);
 
     auto x = sampler.sample_x();
+    auto spin = sampler.sample_spin();
+    auto isospin = sampler.sample_isospin();
 
     BENCHMARK("JacobianForward"){
-        auto jac_rev = jac_calc.jacobian_forward(x, wavefunction);
+        auto jac_rev = jac_calc.jacobian_forward(x, spin, isospin, wavefunction);
         return jac_rev;
     };
 
@@ -113,7 +117,7 @@ TEST_CASE("JacobianBenchmarkReverse"){
 
     JacobianCalculator jac_calc(options);
     ManyBodyWavefunction wavefunction = ManyBodyWavefunction(
-        cfg.wavefunction, options);
+        cfg.wavefunction, cfg.sampler, options);
     wavefunction -> to(torch::kDouble);
     wavefunction -> to(options.device());
 
@@ -121,9 +125,11 @@ TEST_CASE("JacobianBenchmarkReverse"){
     jac_calc.set_parallelization(wavefunction, 1);
 
     auto x = sampler.sample_x();
+    auto spin = sampler.sample_spin();
+    auto isospin = sampler.sample_isospin();
 
     BENCHMARK("JacobianReverse"){
-        auto jac_rev = jac_calc.jacobian_reverse(x, wavefunction);
+        auto jac_rev = jac_calc.jacobian_reverse(x, spin, isospin, wavefunction);
         return jac_rev;
     };
 
@@ -142,7 +148,7 @@ TEST_CASE("JacobianBenchmarkReverseBatched"){
 
     JacobianCalculator jac_calc(options);
     ManyBodyWavefunction wavefunction = ManyBodyWavefunction(
-        cfg.wavefunction, options);
+        cfg.wavefunction, cfg.sampler, options);
     wavefunction -> to(torch::kDouble);
     wavefunction -> to(options.device());
 
@@ -150,9 +156,11 @@ TEST_CASE("JacobianBenchmarkReverseBatched"){
     jac_calc.set_parallelization(wavefunction, 10);
 
     auto x = sampler.sample_x();
+    auto spin = sampler.sample_spin();
+    auto isospin = sampler.sample_isospin();
 
     BENCHMARK("BatchJacobianReverse"){
-        auto jac_rev = jac_calc.batch_jacobian_reverse(x, wavefunction);
+        auto jac_rev = jac_calc.batch_jacobian_reverse(x, spin, isospin, wavefunction);
         return jac_rev;
     };
 
@@ -172,7 +180,7 @@ TEST_CASE("JacobianBenchmarkForwardBatched"){
 
     JacobianCalculator jac_calc(options);
     ManyBodyWavefunction wavefunction = ManyBodyWavefunction(
-        cfg.wavefunction, options);
+        cfg.wavefunction, cfg.sampler, options);
     wavefunction -> to(torch::kDouble);
     wavefunction -> to(options.device());
 
@@ -180,9 +188,11 @@ TEST_CASE("JacobianBenchmarkForwardBatched"){
     jac_calc.set_parallelization(wavefunction, 10);
 
     auto x = sampler.sample_x();
+    auto spin = sampler.sample_spin();
+    auto isospin = sampler.sample_isospin();
 
     BENCHMARK("BatchJacobianForward"){
-        auto jac_rev = jac_calc.batch_jacobian_forward(x, wavefunction);
+        auto jac_rev = jac_calc.batch_jacobian_forward(x, spin, isospin, wavefunction);
         return jac_rev;
     };
 

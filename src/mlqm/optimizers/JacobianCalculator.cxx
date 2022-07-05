@@ -44,7 +44,7 @@ void JacobianCalculator::set_parallelization(ManyBodyWavefunction wf, size_t con
     wf_copies.clear();
     // don't worry about setting parameters yet.
     for (size_t i = 0; i < concurrency; i ++){
-        wf_copies.push_back(ManyBodyWavefunction(wf->cfg, options));
+        wf_copies.push_back(ManyBodyWavefunction(wf->cfg, wf->sampler_cfg, options));
         wf_copies.back() -> to(options.device());
         wf_copies.back() -> to(torch::kFloat64);
     }
@@ -54,14 +54,15 @@ void JacobianCalculator::set_parallelization(ManyBodyWavefunction wf, size_t con
 }
 
 torch::Tensor JacobianCalculator::jacobian_reverse(
-    torch::Tensor x_current, ManyBodyWavefunction wavefunction){
+    torch::Tensor x_current, torch::Tensor spin, torch::Tensor isospin,
+    ManyBodyWavefunction wavefunction){
     // This function goes through the jacobian like so:
     // Duplicate the input by n_parameters
     // How many walkers?
     auto n_walkers = x_current.sizes()[0];
 
     // Compute the value of the wavefunction for all walkers:
-    auto psi = wavefunction(x_current);
+    auto psi = wavefunction(x_current, spin, isospin);
 
     // psi = psi.repeat(n_walkers);
     auto psi_v = torch::chunk(psi, n_walkers);
@@ -105,7 +106,8 @@ torch::Tensor JacobianCalculator::jacobian_reverse(
 
 
 torch::Tensor JacobianCalculator::batch_jacobian_reverse(
-    torch::Tensor x_current, ManyBodyWavefunction wavefunction){
+    torch::Tensor x_current, torch::Tensor spin, torch::Tensor isospin,
+    ManyBodyWavefunction wavefunction){
 
     // First, make n copies of the wavefunction:
 
@@ -119,6 +121,8 @@ torch::Tensor JacobianCalculator::batch_jacobian_reverse(
 
     // Next, chunk the inputs:
     auto input_chunks = torch::chunk(x_current, concurrency);
+    auto spin_chunks = torch::chunk(spin, concurrency);
+    auto isospin_chunks = torch::chunk(isospin, concurrency);
 
 
     // Prepare a list of jacobian chunks for output:
@@ -133,7 +137,9 @@ torch::Tensor JacobianCalculator::batch_jacobian_reverse(
 
         // #pragma omp for
         for (i_chunk = 0; i_chunk < concurrency; i_chunk ++){
-            jac_chunks[i_chunk] = jacobian_reverse(input_chunks[i_chunk], wf_copies[i_chunk]);
+            jac_chunks[i_chunk] = jacobian_reverse(
+                input_chunks[i_chunk], spin_chunks[i_chunk], isospin_chunks[i_chunk],
+                wf_copies[i_chunk]);
         }
     }
 
@@ -147,7 +153,8 @@ torch::Tensor JacobianCalculator::batch_jacobian_reverse(
 
 
 torch::Tensor JacobianCalculator::jacobian_forward(
-    torch::Tensor x_current, ManyBodyWavefunction wavefunction){
+    torch::Tensor x_current, torch::Tensor spin, torch::Tensor isospin,
+    ManyBodyWavefunction wavefunction){
 
     // PLOG_INFO << "Enter forward";
 
@@ -155,7 +162,7 @@ torch::Tensor JacobianCalculator::jacobian_forward(
     auto n_walkers = x_current.sizes()[0];
 
     // Compute the value of the wavefunction for all walkers:
-    auto psi = wavefunction(x_current);
+    auto psi = wavefunction(x_current, spin, isospin);
 
     auto jacobian_flat = torch::zeros({n_walkers, n_parameters}, options);
 
@@ -217,7 +224,7 @@ torch::Tensor JacobianCalculator::jacobian_forward(
 }
 
 torch::Tensor JacobianCalculator::jacobian_forward_weight(torch::Tensor psi,
-    torch::Tensor x_current, ManyBodyWavefunction wavefunction, int64_t weight_index){
+    ManyBodyWavefunction wavefunction, int64_t weight_index){
 
 
     // Need to interpolate to the correct layer of the wavefunction:
@@ -282,7 +289,8 @@ torch::Tensor JacobianCalculator::jacobian_forward_weight(torch::Tensor psi,
 
 
 torch::Tensor JacobianCalculator::batch_jacobian_forward(
-    torch::Tensor x_current, ManyBodyWavefunction wavefunction){
+    torch::Tensor x_current, torch::Tensor spin, torch::Tensor isospin,
+    ManyBodyWavefunction wavefunction){
 
     auto n_walkers = x_current.sizes()[0];
 
@@ -296,12 +304,10 @@ torch::Tensor JacobianCalculator::batch_jacobian_forward(
 
     }
     // Forward pass
-    auto psi = wavefunction(x_current);
+    auto psi = wavefunction(x_current, spin, isospin);
 
 
     // Compute just the first column:
-
-    auto first_column = jacobian_forward_weight(psi, x_current, wavefunction, 0);
 
     auto jacobian_flat = torch::zeros({n_walkers, n_parameters}, options);
 
@@ -311,11 +317,11 @@ torch::Tensor JacobianCalculator::batch_jacobian_forward(
     for (int64_t i_param = 0; i_param < n_parameters; i_param++){
         size_t wf_index = i_param % n_wavefunctions;
         // Forward pass
-        auto psi = wf_copies[wf_index](x_current);
+        auto psi = wf_copies[wf_index](x_current, spin, isospin);
 
         jacobian_flat.index_put_(
             {Slice(), i_param},
-            jacobian_forward_weight(psi, x_current, wf_copies[wf_index], i_param) );
+            jacobian_forward_weight(psi, wf_copies[wf_index], i_param) );
     }
 
 
@@ -342,7 +348,8 @@ torch::Tensor JacobianCalculator::batch_jacobian_forward(
 }
 
 torch::Tensor JacobianCalculator::numerical_jacobian(
-    torch::Tensor x_current, ManyBodyWavefunction wavefunction, float kick_size){
+    torch::Tensor x_current, torch::Tensor spin, torch::Tensor isospin,
+    ManyBodyWavefunction wavefunction, float kick_size){
 
     // No need for gradients here
     c10::InferenceMode guard(true);
@@ -354,7 +361,7 @@ torch::Tensor JacobianCalculator::numerical_jacobian(
     auto n_walkers = x_current.sizes()[0];
 
     // // Compute the value of the wavefunction for all walkers:
-    auto psi = wavefunction(x_current);
+    auto psi = wavefunction(x_current, spin, isospin);
 
     auto jacobian_flat = torch::zeros({n_walkers, n_parameters}, options);
 
@@ -378,17 +385,17 @@ torch::Tensor JacobianCalculator::numerical_jacobian(
             // Kick it up:
             wavefunction -> parameters()[i_layer].flatten()[i_weight] += kick_size;
 
-            auto psi_up = wavefunction(x_current);
+            auto psi_up = wavefunction(x_current, spin, isospin);
 
             wavefunction -> parameters()[i_layer].flatten()[i_weight] += kick_size;
-            auto psi_up_up = wavefunction(x_current);
+            auto psi_up_up = wavefunction(x_current, spin, isospin);
 
             // Now, kick it down (undo the first kick and add negative kick):
             wavefunction -> parameters()[i_layer].flatten()[i_weight] += -3.*kick_size;
 
-            auto psi_down = wavefunction(x_current);
+            auto psi_down = wavefunction(x_current, spin, isospin);
             wavefunction -> parameters()[i_layer].flatten()[i_weight] -= kick_size;
-            auto psi_down_down = wavefunction(x_current);
+            auto psi_down_down = wavefunction(x_current, spin, isospin);
 
             // Undo all kicks before the next iteration:
             wavefunction -> parameters()[i_layer].flatten()[i_weight] += 2*kick_size;

@@ -41,6 +41,14 @@ MetropolisSampler::MetropolisSampler(SamplerConfig _cfg, torch::TensorOptions op
 
     kick_opts = kick_opts.dtype(torch::kFloat32);
 
+    // Generate the list of all possible swaps
+
+    for (int64_t i = 0; i < cfg.n_particles; i ++){
+        for (int64_t j = i + 1 ; j < cfg.n_particles; j ++){
+            possible_swaps.push_back({i, j});
+        }
+
+    }
 }
 
 torch::Tensor MetropolisSampler::sample_x(){
@@ -68,6 +76,8 @@ torch::Tensor MetropolisSampler::kick(int n_kicks, ManyBodyWavefunction wavefunc
 
     // First, convert to lower precision for this part!
     x = x.to(torch::kFloat32);
+    spin = spin.to(torch::kFloat32);
+    isospin = isospin.to(torch::kFloat32);
     wavefunction -> to(torch::kFloat32);
 
     torch::Tensor acceptance = torch::zeros({1}, kick_opts);
@@ -81,7 +91,7 @@ torch::Tensor MetropolisSampler::kick(int n_kicks, ManyBodyWavefunction wavefunc
         // We need to compute the wave function twice:
         // Once for the original coordiate, and again for the kicked coordinates
         // Calculate the current wavefunction value:
-        torch::Tensor current_wavefunction = wavefunction(x);
+        torch::Tensor current_wavefunction = wavefunction(x, spin, isospin);
 
         // Generate a long set of random number from which we will pull:
         torch::Tensor random_numbers = torch::rand({n_kicks, n_walkers_opt_shape}, kick_opts);
@@ -120,8 +130,11 @@ torch::Tensor MetropolisSampler::kick(int n_kicks, ManyBodyWavefunction wavefunc
              // Create a kick:
             torch::Tensor kicked = x + kicks[i_kick];
 
+            torch::Tensor kspin = spin.clone();
+            torch::Tensor kisospin = isospin.clone();
+
             // Compute the values of the wave function, which should be of shape
-            torch::Tensor kicked_wavefunction = wavefunction(kicked);
+            torch::Tensor kicked_wavefunction = wavefunction(kicked, kspin, kisospin);
 
             // Probability is the ratio of kicked **2 to original
             torch::Tensor probability = (kicked_wavefunction / current_wavefunction).pow_(2);

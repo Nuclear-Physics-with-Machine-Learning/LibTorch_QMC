@@ -61,11 +61,11 @@ BaseOptimizer::BaseOptimizer(Config cfg, torch::TensorOptions opts)
     }
 
     // Create a model:
-    wavefunction = ManyBodyWavefunction(cfg.wavefunction, options);
+    wavefunction = ManyBodyWavefunction(cfg.wavefunction, cfg.sampler, options);
     wavefunction -> to(options.device());
     wavefunction -> to(torch::kFloat64);
 
-    adaptive_wavefunction = ManyBodyWavefunction(cfg.wavefunction, options);
+    adaptive_wavefunction = ManyBodyWavefunction(cfg.wavefunction, cfg.sampler, options);
     adaptive_wavefunction -> to(options.device());
     adaptive_wavefunction -> to(torch::kFloat64);
 
@@ -198,7 +198,7 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
         torch::Tensor energy_jf, ke_jf, ke_direct, pe, w_of_x;
         auto energy = \
             hamiltonian.energy(
-                wavefunction, x_current, // spin, isospin,  // spin/isospin not yet
+                wavefunction, x_current, spin, isospin,  // spin/isospin not yet
                 energy_jf, // return by reference
                 ke_jf,
                 ke_direct,
@@ -244,7 +244,7 @@ std::vector<torch::Tensor> BaseOptimizer::walk_and_accumulate_observables(){
 
 
         // For each observation, we compute the jacobian.
-        auto jac = jac_calc.batch_jacobian_reverse(x_current, wavefunction);
+        auto jac = jac_calc.batch_jacobian_reverse(x_current, spin, isospin, wavefunction);
 
         // Jac shape is [n_walkers, n_parameters] and we need to normalize by the wavefunction values
         jac = jac / torch::reshape(w_of_x, {-1, 1});
@@ -441,7 +441,7 @@ torch::Tensor BaseOptimizer::recompute_energy(
         torch::Tensor energy_jf, ke_jf, ke_direct, pe, w_of_x;
         auto energy = \
             hamiltonian.energy(
-                trial_wf, this_x, // this_spin, this_isospin,  // spin/isospin not yet
+                trial_wf, this_x, this_spin, this_isospin,  // spin/isospin not yet
                 energy_jf, // return by reference
                 ke_jf,
                 ke_direct,
