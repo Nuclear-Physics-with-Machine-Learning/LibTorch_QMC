@@ -32,6 +32,10 @@ public:
 
     void reset_history();
 
+    // Take an input list of particles (spin or isospin)
+    // And randomly swap two particles per walker config
+    torch::Tensor swap_particles(torch::Tensor input);
+
 private:
 
     // Holds a state: the sampled tensors
@@ -46,8 +50,6 @@ private:
     SamplerConfig cfg;
 
     torch::TensorOptions opts, kick_opts;
-
-    void init_possilble_swaps();
 
     int64_t n_walkers_opt_shape;
 

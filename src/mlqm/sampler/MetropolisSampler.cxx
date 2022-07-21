@@ -167,3 +167,23 @@ torch::Tensor MetropolisSampler::kick(int n_kicks, ManyBodyWavefunction wavefunc
     return acceptance;
 
 }
+
+torch::Tensor MetropolisSampler::swap_particles(torch::Tensor input){
+    
+    // First, pick which indexes to take from the generated pairs:
+
+    // auto swap_indexes = torch::randint(0, possible_swaps.size());
+    
+    // // Get the indexes to use:
+    // torch::Tensor 
+
+    // // Now, loop through the tensor and make swaps:
+    
+    // for (int64_t i = 0; i < inputs.sizes()[0]; i ++){
+
+    // }
+
+    return torch::Tensor();
+
+
+}
